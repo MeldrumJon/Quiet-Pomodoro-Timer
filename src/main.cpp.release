@@ -1,3 +1,6 @@
+// This main uses interrupts and sleeps most of the time.
+// Once the Serial port is no longer needed, I should use this.
+
 #include <Arduino.h>
 #define FASTLED_ALLOW_INTERRUPTS 0
 #include <FastLED.h>
