@@ -31,7 +31,7 @@ void setup() {
   Serial.begin(9600);
   buttonFSM_init();
   FastLED.addLeds<WS2812, DATA_PIN>(leds, NUM_LEDS);
-  Timer1.initialize(1000000);
+  Timer1.initialize(1600);
   Timer1.attachInterrupt(isr_timerDone);
 }
 
