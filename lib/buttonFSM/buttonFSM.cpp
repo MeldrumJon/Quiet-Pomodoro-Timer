@@ -1,13 +1,13 @@
 #include <buttonFSM.h>
 #include <Arduino.h>
+#include <ringTimeCommon.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define BTN0_PIN 4
-#define BTN1_PIN 2
-#define BTN0_MASK (1<<BTN0_PIN)
-#define BTN1_MASK (1<<BTN1_PIN)
-#define BTN_MASK (BTN0_MASK|BTN1_MASK)
+#define DEBOUNCE_U_SECONDS 60000
+#define DEBOUNCE_TICKS (DEBOUNCE_U_SECONDS/TICK_U_SECONDS)
+#define HOLD_U_SECONDS 3000000
+#define HOLD_TICKS (HOLD_U_SECONDS/TICK_U_SECONDS)
 
 enum buttonFSM_state_t {
     IDLE_ST,
@@ -17,18 +17,15 @@ enum buttonFSM_state_t {
 };
 static buttonFSM_state_t currentState = IDLE_ST;
 
-static uint8_t btns = 0;
-
 void buttonFSM_init() {
-    DDRD = DDRD & ~BTN_MASK; // set direction for buttons to input
+    DDRD = DDRD & ~BTNS_MASK; // set direction for buttons to input
     currentState = IDLE_ST; // should be exactly the same as the static variables at the top
-    btns = 0;
     return;
 }
 
 // Helper functions
 static inline uint8_t readBtns() {
-    return PIND & BTN_MASK; // read only the buttons from the digital register
+    return PIND & BTNS_MASK; // read only the buttons from the digital register
 }
 
 // FSM
@@ -47,13 +44,9 @@ static void debugStatePrint(bool printState) {
             break;
         case STABLE_ST:
             if (printState) { Serial.println("buttonFSM: STABLE_ST"); }
-            // if (previousState == wait_unpressed_st) { // Is something like this necesary?
-                Serial.println(btns, BIN); // Print the state of the buttons after a short press
-            // }
             break;
         case STABLE_LONG_ST:
             if (printState) { Serial.println("buttonFSM: STABLE_LONG_ST"); }
-            Serial.println(btns, BIN); // Print the state of the buttons after a long press
             break;
         default: // error, we forgot to include a state
             Serial.println("buttonFSM debugStatePrint: hit default");
@@ -65,9 +58,11 @@ static void debugStatePrint(bool printState) {
 }
 #endif
 
-void buttonFSM_tick() {
-    static uint16_t counter;
-    static uint8_t savedBtns = 0;
+uint8_t buttonFSM_tick() {
+    static uint16_t counter = 0;
+    static uint8_t prevBtns = 0;
+    uint8_t btns;
+    uint8_t pressedBtns = 0;
 
     #if DEBUG
     debugStatePrint(true);
@@ -77,8 +72,10 @@ void buttonFSM_tick() {
         case IDLE_ST:
             break;
         case WAIT_ST:
+            ++counter;
             break;
         case STABLE_ST:
+            ++counter;
             break;
         case STABLE_LONG_ST:
             break;
@@ -91,15 +88,39 @@ void buttonFSM_tick() {
 
     switch(currentState) {
         case IDLE_ST:
+            btns = readBtns();
             if (btns != 0) {
-                savedBtns = btns;
+                prevBtns = btns;
+                counter = 0;
+                currentState = WAIT_ST;
             }
             break;
         case WAIT_ST:
+            btns = readBtns();
+            if (btns != prevBtns) {
+                currentState = IDLE_ST;
+            }
+            else if (counter >= DEBOUNCE_TICKS) {
+                pressedBtns = btns;
+                counter = 0;
+                currentState = STABLE_ST;
+            }
             break;
         case STABLE_ST:
+            btns = readBtns();
+            if (btns != prevBtns) {
+                currentState = IDLE_ST;
+            }
+            else if (counter >= HOLD_TICKS) {
+                pressedBtns = LONG_PRESS_ADJUST(btns);
+                currentState = STABLE_LONG_ST;
+            }
             break;
         case STABLE_LONG_ST:
+            btns = readBtns();
+            if (btns != prevBtns) {
+                currentState = IDLE_ST;
+            }
             break;
         default:
             #if DEBUG
@@ -107,6 +128,5 @@ void buttonFSM_tick() {
             #endif
             break;
     }
-
-    return;
+    return pressedBtns;
 }

@@ -4,6 +4,7 @@
 #include <TimerOne.h>
 #include <LowPower.h>
 #include <buttonFSM.h>
+#include <ringTimeCommon.h>
 
 #define DATA_PIN 6
 #define NUM_LEDS 12
@@ -24,14 +25,17 @@ void update(void) {
     color_index = (color_index + 1) % NUM_COLORS;
   }
   FastLED.show();
-  buttonFSM_tick();
+  uint8_t pressed = buttonFSM_tick();
+  if (pressed != 0) {
+    Serial.println(pressed, BIN);
+  }
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(BAUD_RATE);
   buttonFSM_init();
   FastLED.addLeds<WS2812, DATA_PIN>(leds, NUM_LEDS);
-  Timer1.initialize(1600);
+  Timer1.initialize(TICK_U_SECONDS);
   Timer1.attachInterrupt(isr_timerDone);
 }
 
