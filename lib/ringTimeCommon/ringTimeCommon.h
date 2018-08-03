@@ -12,7 +12,7 @@
 // This assumes a gap between each button. If that is not the case,
 // Adjust the function so that the masks do not overlap.
 #define LONG_PRESS_ADJUST(mask) (mask<<1)
-#define LONG_PRESS_START_MASK BTN_MASK_ADJUST(BTN_START_MASK)
-#define LONG_PRESS_ADD_MASK BTN_MASK_ADJUST(BTN_ADD_MASK)
-#define LONG_PRESS_MASK BTN_MASK_ADJUST(BTNS_MASK)
+#define LONG_PRESS_START_MASK LONG_PRESS_ADJUST(BTN_START_MASK)
+#define LONG_PRESS_ADD_MASK LONG_PRESS_ADJUST(BTN_ADD_MASK)
+#define LONG_PRESS_MASK LONG_PRESS_ADJUST(BTNS_MASK)
 #define SHORT_LONG_MASK (LONG_BTNS_MASK|BTNS_MASK)

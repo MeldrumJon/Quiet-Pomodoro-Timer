@@ -9,9 +9,12 @@
 #define LEDS_DATA_PIN 6
 #define NUM_LEDS 12
 
-#define BRIGHTNESS_INC_VALUE 5
-#define NUM_BRIGHTNESS_LVLS 4 // should be a power of two
-#define NUM_TOTAL_SHADES 5 // should be a 2^n+1
+#define NUM_BRIGHTNESS_LVLS 8 // should be a power of two
+#define NUM_SHADES (NUM_BRIGHTNESS_LVLS+1) // includes 0
+
+#define SHADES_SCALAR (256/NUM_BRIGHTNESS_LVLS)
+
+#define BRIGHT_ADJUST_PATTERN 4
 
 #if DEBUG
 #define MAX_TIME_U_SECONDS   60000000 // 1 min
@@ -21,20 +24,24 @@
 #define MAX_TICKS (MAX_TIME_U_SECONDS/TICK_U_SECONDS)
 #define DFLT_TICKS_PER_LED (MAX_TICKS/NUM_LEDS)
 #define TICKS_PER_FLASH_TOGGLE (1000000/TICK_U_SECONDS) // About 1s
+#define SETTING_TIMEOUT_TICKS (60000000/TICK_U_SECONDS) // about 1min
 
 CRGB leds[NUM_LEDS];
 
-// Colors are GRB
-static uint8_t color8 = 0x44;
-static uint8_t colorHalf8 = 0x22;
-static uint8_t shades8[NUM_TOTAL_SHADES] = {0x00, 0x11, 0x22, 0x33, 0x44};
+// Color shades
+static uint8_t alert8 = 96; // must be multiple of 8
+static uint8_t color8 = 48; // must be multipled of 8
+static uint8_t colorHalf8 = 24; // must be half of color8
+static uint8_t shades8[NUM_SHADES] = {0x00, 0x11, 0x22, 0x33, 0x44};
 static const CRGB OFF_COLOR = 0x000000;
 
 enum timerFSM_state_t {
     IDLE_ST,
     COUNTDOWN_ST,
     ALERT_ST,
-    COUNTUP_ST
+    COUNTUP_ST,
+    SET_BRIGHTNESS_COUNT,
+    SET_BRIGHTNESS_ALERT
 };
 static timerFSM_state_t currentState = IDLE_ST;
 
@@ -132,19 +139,83 @@ static void toggleAlert() {
     static bool flashOn = false;
     if (flashOn) {
         for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-            leds[i].r = (i%2) ? color8 : 0;
+            leds[i].r = (i%2) ? alert8 : 0;
         }
         Serial.println("Turn off alert!");
         flashOn = false;
     }
     else {
         for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-            leds[i].r = (i%2) ? 0 : color8;
+            leds[i].r = (i%2) ? 0 : alert8;
         }
         Serial.println("Turn on alert!");
         flashOn = true;
     }
     FastLED.show();
+}
+
+/** SETTINGS **/
+static void initBrightnessCount() {
+    FastLED.clear(true);
+    for (uint8_t i = 0; i < NUM_LEDS; ++i) {
+        if (!(i%BRIGHT_ADJUST_PATTERN)) {
+            leds[i].g = color8;
+        }
+    }
+    FastLED.show();
+}
+static void brightnessCountUpdate(bool add) {
+    color8 = (add) ? color8 + NUM_BRIGHTNESS_LVLS : color8 - NUM_BRIGHTNESS_LVLS;
+    for (uint8_t i = 0; i < NUM_LEDS; ++i) {
+        if (!(i%BRIGHT_ADJUST_PATTERN)) {
+            leds[i].g = color8;
+        }
+    }
+    FastLED.show();
+}
+
+static void initBrightnessAlert() {
+    FastLED.clear(true);
+    for (uint8_t i = 0; i < NUM_LEDS; ++i) {
+        if (!(i%BRIGHT_ADJUST_PATTERN)) {
+            leds[i].r = alert8;
+        }
+    }
+    FastLED.show();
+}
+static void brightnessAlertUpdate(bool add) {
+    alert8 = (add) ? alert8 + NUM_BRIGHTNESS_LVLS : alert8 - NUM_BRIGHTNESS_LVLS;
+    for (uint8_t i = 0; i < NUM_LEDS; ++i) {
+        if (!(i%BRIGHT_ADJUST_PATTERN)) {
+            leds[i].r = alert8;
+        }
+    }
+    FastLED.show();
+}
+
+
+static void saveBrightnessSettings() {
+    uint8_t shadeDecrement = scale8(color8, SHADES_SCALAR);
+    shades8[NUM_BRIGHTNESS_LVLS] = color8;
+    for (uint8_t i = NUM_BRIGHTNESS_LVLS-1; i > 0; --i) { // 1, 2, 3, 4
+        shades8[i] = shades8[i+1] - shadeDecrement;
+    }
+    colorHalf8 = color8/2;
+
+    #if DEBUG
+    Serial.print("color8: ");
+    Serial.println(color8, HEX);
+    Serial.print("colorHalf8: ");
+    Serial.println(colorHalf8, HEX);
+    Serial.print("alert8: ");
+    Serial.println(alert8, HEX);
+    Serial.print("shade8: [ ");
+    for (uint8_t i = 0; i < NUM_BRIGHTNESS_LVLS+1; ++i) {
+        Serial.print(shades8[i]);
+        Serial.print(" ");
+    }
+    Serial.println(" ]");
+    #endif
 }
 
 void timerFSM_init() {
@@ -173,6 +244,12 @@ static void debugStatePrint(bool printState) {
             break;
         case COUNTUP_ST:
             if (printState) { Serial.println("timerFSM: COUNTUP_ST"); }
+            break;
+        case SET_BRIGHTNESS_COUNT:
+            if (printState) { Serial.println("timerFSM: SET_BRIGHTNESS_COUNT"); }
+            break;
+        case SET_BRIGHTNESS_ALERT:
+            if (printState) { Serial.println("timerFSM: SET_BRIGHTNESS_ALERT"); }
             break;
         default: // error, we forgot to include a state
             Serial.println("timerFSM debugStatePrint: hit default");
@@ -203,6 +280,10 @@ void timerFSM_tick(uint8_t btns) {
         case COUNTUP_ST:
             ++counter;
             break;
+        case SET_BRIGHTNESS_COUNT:
+            break;
+        case SET_BRIGHTNESS_ALERT:
+            break;
         default:
             #if DEBUG
             Serial.println("timerFSM_tick(): state update hit default");
@@ -230,6 +311,11 @@ void timerFSM_tick(uint8_t btns) {
                     initCountup();
                     currentState = COUNTUP_ST;
                 }
+            }
+            else if (btns & LONG_PRESS_ADD_MASK) {
+                counter = 0;
+                initBrightnessCount();
+                currentState = SET_BRIGHTNESS_COUNT;
             }
             break;
         case COUNTDOWN_ST:
@@ -271,6 +357,42 @@ void timerFSM_tick(uint8_t btns) {
             else if (counter >= totalTicks) {
                 reset();
                 currentState = IDLE_ST;
+            }
+            break;
+        case SET_BRIGHTNESS_COUNT:
+            if (btns & BTN_START_MASK && btns & BTN_ADD_MASK) {
+                counter = 0;
+                currentState = SET_BRIGHTNESS_ALERT;
+                initBrightnessAlert();
+            }
+            else if (counter >= SETTING_TIMEOUT_TICKS) {
+                saveBrightnessSettings();
+                reset();
+                currentState = IDLE_ST;
+            }
+            else if (btns & BTN_ADD_MASK) {
+                counter = 0;
+                brightnessCountUpdate(true); // add to the brightness
+            }
+            else if (btns & BTN_START_MASK) {
+                counter = 0;
+                brightnessCountUpdate(false); // subtract from the brightness
+            }
+            break;
+        case SET_BRIGHTNESS_ALERT:
+            if (counter >= SETTING_TIMEOUT_TICKS
+                || (btns & BTN_START_MASK && btns & BTN_ADD_MASK)) {
+                saveBrightnessSettings();
+                reset();
+                currentState = IDLE_ST;
+            }
+            else if (btns & BTN_ADD_MASK) {
+                counter = 0;
+                brightnessAlertUpdate(true); // add to the brightness
+            }
+            else if (btns & BTN_START_MASK) {
+                counter = 0;
+                brightnessAlertUpdate(false); // subtract from the brightness
             }
             break;
         default:
