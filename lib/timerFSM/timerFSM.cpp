@@ -6,9 +6,11 @@
 
 #define DEBUG 1
 
+// LEDs
 #define LEDS_DATA_PIN 6
 #define NUM_LEDS 12
 
+// Timing Calculations
 #if DEBUG
 #define MAX_TIME_U_SECONDS   60000000 // 1 min
 #else
@@ -17,36 +19,36 @@
 #define MAX_TICKS (MAX_TIME_U_SECONDS/TICK_U_SECONDS)
 #define DFLT_TICKS_PER_LED (MAX_TICKS/NUM_LEDS)
 #define TICKS_PER_FLASH_TOGGLE (1000000/TICK_U_SECONDS) // About 1s
-#define SETTING_TIMEOUT_TICKS (60000000/TICK_U_SECONDS) // about 1min
+#define SETTING_TIMEOUT_TICKS (60000000/TICK_U_SECONDS) // About 1min
 
-#define NUM_BRIGHTNESS_OPTIONS 17
-#define NUM_BRIGHTNESS_LVLS 9 // Should be 2^n+1
+// Fade brightness
+#define NUM_BRIGHT_PREFS 17
+#define NUM_BRIGHT_LVLS 8 // Should be 2^n
 
-#define BRIGHT_MAX_IDX 8
-#define BRIGHT_MIN_IDX 1
-#define BRIGHT_OFF_IDX 0
+#define MAX_BRIGHT_IDX 7
+#define MIN_BRIGHT_IDX 0
 
-const uint8_t gamma_lut[NUM_BRIGHTNESS_OPTIONS][NUM_BRIGHTNESS_LVLS] = {
-	{ 0, 1, 1, 2, 2, 3, 3, 4, 4},
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8},
-	{ 0, 1, 2, 3, 4, 6, 8, 10, 12},
-	{ 0, 1, 2, 4, 6, 9, 11, 14, 18},
-	{ 0, 1, 2, 4, 7, 10, 15, 20, 26},
-	{ 0, 1, 3, 5, 9, 14, 20, 27, 35},
-	{ 0, 1, 4, 7, 12, 18, 26, 35, 46},
-	{ 0, 1, 4, 9, 15, 23, 33, 44, 58},
-	{ 0, 1, 3, 8, 15, 25, 38, 54, 73},
-	{ 0, 1, 4, 9, 18, 30, 46, 65, 89},
-	{ 0, 1, 4, 11, 22, 36, 55, 79, 107},
-	{ 0, 1, 5, 13, 26, 43, 65, 93, 126},
-	{ 0, 1, 6, 16, 30, 50, 76, 109, 148},
-	{ 0, 1, 7, 18, 35, 58, 89, 127, 172},
-	{ 0, 2, 8, 21, 40, 67, 102, 145, 197},
-	{ 0, 2, 9, 24, 46, 76, 116, 166, 225},
-	{ 0, 2, 11, 27, 52, 87, 132, 188, 255}
+const uint8_t gamma_lut[NUM_BRIGHT_PREFS][NUM_BRIGHT_LVLS] = {
+	{ 1, 1, 2, 2, 3, 3, 4, 4},
+	{ 1, 2, 3, 4, 5, 6, 7, 8},
+	{ 1, 2, 3, 4, 6, 8, 10, 12},
+	{ 1, 2, 4, 6, 9, 11, 14, 18},
+	{ 1, 2, 4, 7, 10, 15, 20, 26},
+	{ 1, 3, 5, 9, 14, 20, 27, 35},
+	{ 1, 4, 7, 12, 18, 26, 35, 46},
+	{ 1, 4, 9, 15, 23, 33, 44, 58},
+	{ 1, 3, 8, 15, 25, 38, 54, 73},
+	{ 1, 4, 9, 18, 30, 46, 65, 89},
+	{ 1, 4, 11, 22, 36, 55, 79, 107},
+	{ 1, 5, 13, 26, 43, 65, 93, 126},
+	{ 1, 6, 16, 30, 50, 76, 109, 148},
+	{ 1, 7, 18, 35, 58, 89, 127, 172},
+	{ 2, 8, 21, 40, 67, 102, 145, 197},
+	{ 2, 9, 24, 46, 76, 116, 166, 225},
+	{ 2, 11, 27, 52, 87, 132, 188, 255}
 };
-static uint8_t alertGamma_idx = 9;
-static uint8_t timerGamma_idx = 6;
+static uint8_t alertGammaPref_idx = 9;
+static uint8_t timerGammaPref_idx = 6;
 
 CRGB leds[NUM_LEDS];
 
@@ -61,61 +63,64 @@ enum timerFSM_state_t {
 static timerFSM_state_t currentState = IDLE_ST;
 
 /** IDLE **/
-static uint8_t ledIdx = 0; // Number of LEDs on indicates how much time the timer should run for.
+static uint8_t led_idx = 0; // Number of LEDs on indicates how much time the timer should run for.
 
 static void reset() {
-    ledIdx = 0;
+    led_idx = 0;
     FastLED.clear(true); // turn off the LEDs and write 0s to the LED array
     #if DEBUG
-    Serial.print("ledIdx: ");
-    Serial.println(ledIdx, DEC);
+    Serial.print("led_idx: ");
+    Serial.println(led_idx, DEC);
     #endif
 }
 static void add() { // TODO: handle overflow
-    if (ledIdx < NUM_LEDS) {
-        leds[ledIdx].b = gamma_lut[timerGamma_idx][BRIGHT_MAX_IDX];
-        ++ledIdx;
+    if (led_idx < NUM_LEDS) {
+        leds[led_idx].b = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+        ++led_idx;
         FastLED.show();
     }
     else {
         reset();
     }
     #if DEBUG
-    Serial.print("ledIdx: ");
-    Serial.println(ledIdx, DEC);
+    Serial.print("led_idx: ");
+    Serial.println(led_idx, DEC);
     #endif
 }
 
 /** CALIBRATE **/
 static uint32_t ticksPerLED = DFLT_TICKS_PER_LED; // NUMBER of ticks it takes to turn off/on one LED
-static uint32_t ticksPerLevel = DFLT_TICKS_PER_LED/(NUM_BRIGHTNESS_LVLS-1); // Number of ticks it takes to dim/brighten one LED
+static uint32_t ticksPerLevel = DFLT_TICKS_PER_LED/NUM_BRIGHT_LVLS; // Number of ticks it takes to dim/brighten one LED
 
 /** COUNTDOWN/COUNTUP **/
 static uint32_t totalTicks = 0; // Number of ticks before we exit COUNTDOWN/COUNTUP
-static uint8_t shadeIdx = 0;
+static uint8_t brightLvl_idx = 0;
 
 static void initCountdown() {
-    totalTicks = ledIdx*ticksPerLED;
-    shadeIdx = BRIGHT_MAX_IDX;
-    //memset(&leds, countdownShades[0], sizeof(CRGB)*ledIdx); // Doesn't work.  CRGB probably contains much more data than we actually want to transfer anyway.
-    for (uint8_t i = 0; i < ledIdx; ++i) {
+    totalTicks = led_idx*ticksPerLED;
+    brightLvl_idx = MAX_BRIGHT_IDX;
+    //memset(&leds, countdownShades[0], sizeof(CRGB)*led_idx); // Doesn't work.  CRGB probably contains much more data than we actually want to transfer anyway.
+    for (uint8_t i = 0; i < led_idx; ++i) {
         leds[i].b = 0;
-        leds[i].r = gamma_lut[timerGamma_idx][BRIGHT_MAX_IDX];
+        leds[i].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
     }
     FastLED.show();
-    --ledIdx; // start dimming at the proper LED
+    --led_idx; // start dimming at the proper LED
 }
 static void updateCountdown() {
-    --shadeIdx;
-    leds[ledIdx].r = gamma_lut[timerGamma_idx][shadeIdx];
-    if (shadeIdx == 0) {
-        --ledIdx;
-        shadeIdx = BRIGHT_MAX_IDX;
+    if (brightLvl_idx == 0) {
+        leds[led_idx].r = 0;
+        --led_idx;
+        brightLvl_idx = MAX_BRIGHT_IDX;
+    }
+    else {
+        --brightLvl_idx;
+        leds[led_idx].r = gamma_lut[timerGammaPref_idx][brightLvl_idx];
     }
     FastLED.show();
 
     #if DEBUG
-    if (shadeIdx == BRIGHT_MAX_IDX)  {
+    if (brightLvl_idx == MAX_BRIGHT_IDX)  {
         Serial.println("Powered off LED");
     }
     else {
@@ -125,21 +130,20 @@ static void updateCountdown() {
 }
 static void initCountup() {
     totalTicks = NUM_LEDS * ticksPerLED;
-    shadeIdx = BRIGHT_MAX_IDX;
+    brightLvl_idx = MIN_BRIGHT_IDX;
     FastLED.clear(true);
-    ledIdx = 0;
+    led_idx = 0;
 }
 static void updateCountup() {
-    --shadeIdx;
-    leds[ledIdx].g = gamma_lut[timerGamma_idx][BRIGHT_MAX_IDX - shadeIdx];
-    if (shadeIdx == 0) {
-        ++ledIdx;
-        shadeIdx = BRIGHT_MAX_IDX;
+    leds[led_idx].g = gamma_lut[timerGammaPref_idx][brightLvl_idx];
+    brightLvl_idx = (brightLvl_idx + 1) % NUM_BRIGHT_LVLS;
+    if (brightLvl_idx == 0) {
+        ++led_idx;
     }
     FastLED.show();
 
     #if DEBUG
-    if (shadeIdx == BRIGHT_MAX_IDX)  {
+    if (brightLvl_idx == 0)  {
         Serial.println("Powered on LED");
     }
     else {
@@ -154,14 +158,14 @@ static void toggleAlert() {
     static bool flashOn = false;
     if (flashOn) {
         for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-            leds[i].r = (i%2) ? gamma_lut[alertGamma_idx][BRIGHT_MAX_IDX] : 0;
+            leds[i].r = (i%2) ? gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX] : 0;
         }
         Serial.println("Turn off alert!");
         flashOn = false;
     }
     else {
         for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-            leds[i].r = (i%2) ? 0 : gamma_lut[alertGamma_idx][BRIGHT_MAX_IDX];
+            leds[i].r = (i%2) ? 0 : gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
         }
         Serial.println("Turn on alert!");
         flashOn = true;
@@ -176,17 +180,17 @@ static void initBrightnessCount() {
     FastLED.clear(true);
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].g = gamma_lut[timerGamma_idx][BRIGHT_MAX_IDX];
+            leds[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     FastLED.show();
 }
 static void brightnessCountUpdate(bool add) {
-    timerGamma_idx = (add) ? (timerGamma_idx + 1) % NUM_BRIGHTNESS_OPTIONS
-        : (timerGamma_idx==0) ? NUM_BRIGHTNESS_OPTIONS-1 : timerGamma_idx - 1;
+    timerGammaPref_idx = (add) ? (timerGammaPref_idx + 1) % NUM_BRIGHT_PREFS
+        : (timerGammaPref_idx==0) ? NUM_BRIGHT_PREFS-1 : timerGammaPref_idx - 1;
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].g = gamma_lut[timerGamma_idx][BRIGHT_MAX_IDX];
+            leds[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     FastLED.show();
@@ -196,21 +200,21 @@ static void initBrightnessAlert() {
     FastLED.clear(true);
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].r = gamma_lut[alertGamma_idx][BRIGHT_MAX_IDX];
+            leds[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     FastLED.show();
 }
 static void brightnessAlertUpdate(bool add) {
-    alertGamma_idx = (add) ? (alertGamma_idx + 1) % NUM_BRIGHTNESS_OPTIONS
-        : (alertGamma_idx==0) ? NUM_BRIGHTNESS_OPTIONS-1 : alertGamma_idx - 1;
+    alertGammaPref_idx = (add) ? (alertGammaPref_idx + 1) % NUM_BRIGHT_PREFS
+        : (alertGammaPref_idx==0) ? NUM_BRIGHT_PREFS-1 : alertGammaPref_idx - 1;
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].r = gamma_lut[alertGamma_idx][BRIGHT_MAX_IDX];
+            leds[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     #if DEBUG
-    Serial.println(alertGamma_idx);
+    Serial.println(alertGammaPref_idx);
     #endif
     FastLED.show();
 }
@@ -218,8 +222,8 @@ static void brightnessAlertUpdate(bool add) {
 
 static void saveBrightnessSettings() {
     // uint8_t shadeDecrement = scale8(color8, SHADES_SCALAR);
-    // shades8[NUM_BRIGHTNESS_LVLS] = color8;
-    // for (uint8_t i = NUM_BRIGHTNESS_LVLS-1; i > 0; --i) { // 1, 2, 3, 4
+    // shades8[NUM_BRIGHT_LVLS] = color8;
+    // for (uint8_t i = NUM_BRIGHT_LVLS-1; i > 0; --i) { // 1, 2, 3, 4
     //     shades8[i] = shades8[i+1] - shadeDecrement;
     // }
     // colorHalf8 = color8/2;
@@ -232,7 +236,7 @@ static void saveBrightnessSettings() {
     // Serial.print("alert8: ");
     // Serial.println(alert8, HEX);
     // Serial.print("shade8: [ ");
-    // for (uint8_t i = 0; i < NUM_BRIGHTNESS_LVLS+1; ++i) {
+    // for (uint8_t i = 0; i < NUM_BRIGHT_LVLS+1; ++i) {
     //     Serial.print(shades8[i]);
     //     Serial.print(" ");
     // }
@@ -323,7 +327,7 @@ void timerFSM_tick(uint8_t btns) {
                 add();
             }
             else if (btns & BTN_START_MASK) {
-                if (ledIdx > 0) {
+                if (led_idx > 0) {
                     counter = 0;
                     initCountdown();
                     currentState = COUNTDOWN_ST;
