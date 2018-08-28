@@ -10,6 +10,8 @@
 #define LEDS_DATA_PIN 6
 #define NUM_LEDS 12
 
+CRGB leds[NUM_LEDS];
+
 // Timing Calculations
 #if DEBUG
 #define MAX_TIME_U_SECONDS   60000000 // 1 min
@@ -21,7 +23,7 @@
 #define TICKS_PER_FLASH_TOGGLE (1000000/TICK_U_SECONDS) // About 1s
 #define SETTING_TIMEOUT_TICKS (60000000/TICK_U_SECONDS) // About 1min
 
-// Fade brightness
+// Brightness and Fading
 #define NUM_BRIGHT_PREFS 17
 #define NUM_BRIGHT_LVLS 8 // Should be 2^n
 
@@ -49,8 +51,6 @@ const uint8_t gamma_lut[NUM_BRIGHT_PREFS][NUM_BRIGHT_LVLS] = {
 };
 static uint8_t alertGammaPref_idx = 9;
 static uint8_t timerGammaPref_idx = 6;
-
-CRGB leds[NUM_LEDS];
 
 enum timerFSM_state_t {
     IDLE_ST,

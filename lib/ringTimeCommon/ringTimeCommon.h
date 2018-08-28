@@ -2,6 +2,9 @@
 
 #define TICK_U_SECONDS 20000
 
+#define ENC_PIN_A 2
+#define ENC_PIN_B 3
+
 // Buttons masks from the register
 #define BTN_START_PIN 5
 #define BTN_ADD_PIN 4
