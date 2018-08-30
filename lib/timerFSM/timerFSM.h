@@ -5,6 +5,6 @@
 
 void timerFSM_init();
 
-void timerFSM_tick(uint8_t btns);
+void timerFSM_tick(uint8_t btns, int_fast8_t change);
 
 #endif
