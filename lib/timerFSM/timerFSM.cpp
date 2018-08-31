@@ -1,11 +1,13 @@
+#define DEBUG 1
+#define SHORT 1
+
 #include <Arduino.h>
 #include <timerFSM.h>
 #include <ringTimeCommon.h>
+#if DEBUG
 #define FASTLED_ALLOW_INTERRUPTS 0
+#endif
 #include <FastLED.h>
-
-#define DEBUG 0
-#define SHORT 1
 
 /* Timer FSM */
 enum timerFSM_state_t {
@@ -14,8 +16,10 @@ enum timerFSM_state_t {
     COUNTDOWN_ST,
     ALERT_ST,
     COUNTUP_ST,
-    SET_BRIGHTNESS_COUNT,
-    SET_BRIGHTNESS_ALERT
+    SET_TIMER_BRIGHTNESS,
+    SET_ALERT_BRIGHTNESS,
+    SET_TICKS_PER_LED_WAIT,
+    SET_TICKS_PER_LED
 };
 static timerFSM_state_t currentState = SELECT_ST;
 
@@ -106,6 +110,7 @@ static void select_clear() {
 }
 
 static void select_init() {
+    FastLED.clear(true);
     accumulated = 0;
     for (uint8_t i = adjusted_idx; i < NUM_LEDS; ++i) {
         leds[i].SELECT_COLOR = TIMER_MAX_BRIGHTNESS;
@@ -293,6 +298,32 @@ static void brightnessAlertUpdate(int_fast8_t change) {
     FastLED.show();
 }
 
+static void ticksPerLedWait_init() {
+    //FastLED.clear(true); // Not necessary, since the LEDs should be off after SELECT_ST
+    leds[0].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+    FastLED.show();
+}
+
+static void ticksPerLed_init() {
+    leds[0].r = 0;
+    leds[0].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+    FastLED.show();
+}
+
+static void setBrightness_save() {
+    
+}
+
+static void ticksPerLed_save(uint_fast16_t count) {
+    ticksPerLED = count;
+    ticksPerLevel = count/NUM_BRIGHT_LVLS;
+
+    #if DEBUG
+    Serial.print("ticksPerLED: ");
+    Serial.println(ticksPerLED, DEC);
+    #endif
+}
+
 void timerFSM_init() {
     FastLED.addLeds<WS2812, LEDS_DATA_PIN, GRB>(leds, NUM_LEDS);
     reset();
@@ -322,11 +353,17 @@ static void debugStatePrint(bool printState) {
         case COUNTUP_ST:
             if (printState) { Serial.println("timerFSM: COUNTUP_ST"); }
             break;
-        case SET_BRIGHTNESS_COUNT:
-            if (printState) { Serial.println("timerFSM: SET_BRIGHTNESS_COUNT"); }
+        case SET_TIMER_BRIGHTNESS:
+            if (printState) { Serial.println("timerFSM: SET_TIMER_BRIGHTNESS"); }
             break;
-        case SET_BRIGHTNESS_ALERT:
-            if (printState) { Serial.println("timerFSM: SET_BRIGHTNESS_ALERT"); }
+        case SET_ALERT_BRIGHTNESS:
+            if (printState) { Serial.println("timerFSM: SET_ALERT_BRIGHTNESS"); }
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED_WAIT"); }
+            break;
+        case SET_TICKS_PER_LED:
+            if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED"); }
             break;
         default: // error, we forgot to include a state
             Serial.println("timerFSM debugStatePrint: hit default");
@@ -374,7 +411,7 @@ void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
         case COUNTUP_ST:
             ++counter;
             break;
-        case SET_BRIGHTNESS_COUNT:
+        case SET_TIMER_BRIGHTNESS:
             if (change != 0) {
                 counter = 0;
                 brightnessCountUpdate(change);
@@ -382,12 +419,18 @@ void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
             }
             ++counter;
             break;
-        case SET_BRIGHTNESS_ALERT:
+        case SET_ALERT_BRIGHTNESS:
             if (change != 0) {
                 counter = 0;
                 brightnessAlertUpdate(change);
                 break;
             }
+            ++counter;
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            ++counter;
+            break;
+        case SET_TICKS_PER_LED:
             ++counter;
             break;
         default:
@@ -399,6 +442,7 @@ void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
 
     // State Transitions
     if (btns & BTN_RESET_MASK) {
+        counter = 0;
         reset();
     }
 
@@ -420,7 +464,12 @@ void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
             else if (accumulated >= NUM_PREF_DETENTS) {
                 counter = 0;
                 initBrightnessCount();
-                currentState = SET_BRIGHTNESS_COUNT;
+                currentState = SET_TIMER_BRIGHTNESS;
+            }
+            else if (accumulated <= -(NUM_PREF_DETENTS)) {
+                counter = 0;
+                ticksPerLedWait_init();
+                currentState = SET_TICKS_PER_LED_WAIT;
             }
             else if (counter >= TIMEOUT_TICKS) {
                 FastLED.clear(true);
@@ -442,42 +491,54 @@ void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
                 countup_init();
                 currentState = COUNTUP_ST;
             }
-            else if (counter >= TICKS_PER_FLASH_TOGGLE) {
+            else if ((counter % TICKS_PER_FLASH_TOGGLE) == 0) {
                 alert_toggle();
-                counter = 0;
             }
             break;
         case COUNTUP_ST:
-            if (btns & BTN_START_MASK) {
-                FastLED.clear(true);
+            if (btns & BTN_START_MASK || counter >= totalTicks) {
+                counter = 0;
                 select_init();
                 currentState = SELECT_ST;
             }
             else if (counter % ticksPerLevel == 0) {
                 countup_update();
             }
-            else if (counter >= totalTicks) {
-                FastLED.clear(true);
-                select_init();
-                currentState = SELECT_ST;
-            }
             break;
-        case SET_BRIGHTNESS_COUNT:
+        case SET_TIMER_BRIGHTNESS:
             if (btns & BTN_START_MASK) {
                 counter = 0;
-                currentState = SET_BRIGHTNESS_ALERT;
                 initBrightnessAlert();
+                currentState = SET_ALERT_BRIGHTNESS;
             }
             else if (counter >= TIMEOUT_TICKS) {
-                select_clear();
-                currentState = SELECT_ST;
+                counter = 0;
+                reset(); // moves to SELECT_ST
             }
             break;
-        case SET_BRIGHTNESS_ALERT:
+        case SET_ALERT_BRIGHTNESS:
             if (counter >= TIMEOUT_TICKS
                 || (btns & BTN_START_MASK)) {
-                select_clear();
-                currentState = SELECT_ST;
+                setBrightness_save();
+                counter = 0;
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            if (btns & BTN_START_MASK) {
+                counter = 0;
+                ticksPerLed_init();
+                currentState = SET_TICKS_PER_LED;
+            }
+            else if (counter >= TIMEOUT_TICKS) {
+                counter = 0;
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        case SET_TICKS_PER_LED:
+            if (btns & BTN_START_MASK) {
+                ticksPerLed_save(counter);
+                reset(); // moves to SELECT_ST
             }
             break;
         default:

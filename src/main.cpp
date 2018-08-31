@@ -8,7 +8,7 @@
 #include <buttonFSM.h>
 #include <timerFSM.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 volatile static bool timerDone = false;
 void isr_timerDone(void) { timerDone = true; }
