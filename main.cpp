@@ -3,10 +3,10 @@
 #include <LowPower.h>
 #include <Encoder.h>
 
-#include <ringTimeCommon.h>
-#include <encDelta.h>
-#include <buttonFSM.h>
-#include <timerFSM.h>
+#include "ringTimeCommon.h"
+#include "encDelta.h"
+#include "buttonFSM.h"
+#include "timerFSM.h"
 
 #define DEBUG 1
 

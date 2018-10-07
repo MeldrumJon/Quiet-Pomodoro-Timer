@@ -1,13 +1,13 @@
 #define BAUD_RATE 9600
 
-#define TICK_U_SECONDS 20000
+#define TICK_U_SECONDS 40000
 
 #define ENC_PIN_A 2
 #define ENC_PIN_B 3
 
 // Buttons masks from the register
 #define BTN_START_PIN 5
-#define BTN_RESET_PIN 4
+#define BTN_RESET_PIN 6
 #define BTN_START_MASK (1<<BTN_START_PIN)
 #define BTN_RESET_MASK (1<<BTN_RESET_PIN)
 #define BTNS_MASK (BTN_START_MASK|BTN_RESET_MASK)
@@ -20,5 +20,5 @@
 #define LONG_PRESS_MASK LONG_PRESS_ADJUST(BTNS_MASK)
 #define SHORT_LONG_MASK (LONG_BTNS_MASK|BTNS_MASK)
 
-#define LEDS_DATA_PIN 6
+#define LEDS_DATA_PIN 4
 #define NUM_LEDS 12

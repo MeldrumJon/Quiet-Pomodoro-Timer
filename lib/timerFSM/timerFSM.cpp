@@ -1,5 +1,5 @@
 #define DEBUG 1
-#define SHORT 1
+#define SHORT 0
 
 #include <Arduino.h>
 #include <timerFSM.h>
@@ -24,10 +24,8 @@ enum timerFSM_state_t {
 static timerFSM_state_t currentState = SELECT_ST;
 
 /* LEDs */
-#define LEDS_DATA_PIN 6
-#define NUM_LEDS 12
 
-CRGB leds[NUM_LEDS];
+CRGB lights[NUM_LEDS];
 
 /* Timing Calculations */
 #if SHORT
@@ -37,7 +35,7 @@ CRGB leds[NUM_LEDS];
 #endif
 
 #define MAX_TICKS (MAX_TIME_U_SECONDS/TICK_U_SECONDS)
-#define DFLT_TICKS_PER_LED (MAX_TICKS/NUM_LEDS)
+#define DFLT_TICKS_PER_LED 15141 // (MAX_TICKS/NUM_LEDS)
 #define TICKS_PER_FLASH_TOGGLE (1000000/TICK_U_SECONDS) // About 1s (to avoid epilepsy, avoid >= 3Hz)
 #define TIMEOUT_TICKS (15000000/TICK_U_SECONDS) // About 15s
 #define ALARM_TIMEOUT_TICKS (300000000/TICK_U_SECONDS) // About 5min
@@ -102,18 +100,11 @@ static void reset() {
     currentState = SELECT_ST;
 }
 
-static void select_clear() {
-    numSelected = 0;
-    adjusted_idx = NUM_LEDS;
-    accumulated = 0;
-    FastLED.clear(true); // turn off the LEDs and write 0s to the LED array
-}
-
 static void select_init() {
     FastLED.clear(true);
     accumulated = 0;
     for (uint8_t i = adjusted_idx; i < NUM_LEDS; ++i) {
-        leds[i].SELECT_COLOR = TIMER_MAX_BRIGHTNESS;
+        lights[i].SELECT_COLOR = TIMER_MAX_BRIGHTNESS;
     }
     FastLED.show();
 }
@@ -134,12 +125,12 @@ static void select_changeBy(int_fast8_t change) {
     int_fast8_t new_adjusted = NUM_LEDS - numSelected;
     if (change >= 0) {
         for (uint8_t i = new_adjusted; i < adjusted_idx; ++i) {
-            leds[i].SELECT_COLOR = TIMER_MAX_BRIGHTNESS;
+            lights[i].SELECT_COLOR = TIMER_MAX_BRIGHTNESS;
         }
     }
     else if (change < 0) {
         for (uint8_t i = adjusted_idx; i < new_adjusted; ++i) {
-            leds[i].SELECT_COLOR = 0;
+            lights[i].SELECT_COLOR = 0;
         }
     }
     adjusted_idx = new_adjusted;
@@ -150,21 +141,21 @@ static void countdown_init() {
     totalTicks = numSelected * ticksPerLED;
     brightLvl_idx = MAX_BRIGHT_IDX;
     for (uint8_t i = adjusted_idx; i < NUM_LEDS; ++i) {
-        leds[i].b = 0; // transitions from IDLE state
-        leds[i].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+        lights[i].b = 0; // transitions from IDLE state
+        lights[i].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
     }
     FastLED.show();
     count_idx = adjusted_idx; // start dimming at the proper LED
 }
 static void countdown_update() {
     if (brightLvl_idx == 0) {
-        leds[count_idx].r = 0;
+        lights[count_idx].r = 0;
         ++count_idx;
         brightLvl_idx = MAX_BRIGHT_IDX;
     }
     else {
         --brightLvl_idx;
-        leds[count_idx].r = gamma_lut[timerGammaPref_idx][brightLvl_idx];
+        lights[count_idx].r = gamma_lut[timerGammaPref_idx][brightLvl_idx];
     }
     FastLED.show();
 
@@ -184,7 +175,7 @@ static void countup_init() {
     count_idx = 0;
 }
 static void countup_update() {
-    leds[count_idx].g = gamma_lut[timerGammaPref_idx][brightLvl_idx];
+    lights[count_idx].g = gamma_lut[timerGammaPref_idx][brightLvl_idx];
     brightLvl_idx = (brightLvl_idx + 1) % NUM_BRIGHT_LVLS;
     if (brightLvl_idx == 0) {
         ++count_idx;
@@ -209,12 +200,12 @@ static void alert_toggle() {
         static bool altPattern = false;
         if (altPattern) {
             for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-                leds[i].r = (i%2) ? gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX] : 0;
+                lights[i].r = (i%2) ? gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX] : 0;
             }
         }
         else {
             for (uint8_t i = 0; i < NUM_LEDS; ++i) {
-                leds[i].r = (i%2) ? 0 : gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
+                lights[i].r = (i%2) ? 0 : gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
             }
         }
         altPattern = !altPattern;
@@ -242,7 +233,7 @@ static void initBrightnessCount() {
     FastLED.clear(true);
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+            lights[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     FastLED.show();
@@ -259,7 +250,7 @@ static void brightnessCountUpdate(int_fast8_t change) {
     }
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+            lights[i].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     #if DEBUG
@@ -272,7 +263,7 @@ static void initBrightnessAlert() {
     FastLED.clear(true);
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
+            lights[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     FastLED.show();
@@ -289,7 +280,7 @@ static void brightnessAlertUpdate(int_fast8_t change) {
     }
     for (uint8_t i = 0; i < NUM_LEDS; ++i) {
         if (!(i%BRIGHT_ADJUST_PATTERN)) {
-            leds[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
+            lights[i].r = gamma_lut[alertGammaPref_idx][MAX_BRIGHT_IDX];
         }
     }
     #if DEBUG
@@ -300,18 +291,18 @@ static void brightnessAlertUpdate(int_fast8_t change) {
 
 static void ticksPerLedWait_init() {
     //FastLED.clear(true); // Not necessary, since the LEDs should be off after SELECT_ST
-    leds[0].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+    lights[0].r = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
     FastLED.show();
 }
 
 static void ticksPerLed_init() {
-    leds[0].r = 0;
-    leds[0].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
+    lights[0].r = 0;
+    lights[0].g = gamma_lut[timerGammaPref_idx][MAX_BRIGHT_IDX];
     FastLED.show();
 }
 
 static void setBrightness_save() {
-    
+
 }
 
 static void ticksPerLed_save(uint_fast16_t count) {
@@ -325,7 +316,7 @@ static void ticksPerLed_save(uint_fast16_t count) {
 }
 
 void timerFSM_init() {
-    FastLED.addLeds<WS2812, LEDS_DATA_PIN, GRB>(leds, NUM_LEDS);
+    FastLED.addLeds<WS2812, LEDS_DATA_PIN, GRB>(lights, NUM_LEDS);
     reset();
     return;
 }
