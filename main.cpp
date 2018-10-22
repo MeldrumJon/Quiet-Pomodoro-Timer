@@ -26,7 +26,7 @@ void update(void) {
     Serial.println(change, DEC);
   }
   #endif
-  timerFSM_tick(pressed, change);
+  (*timerFSM_tick)(pressed, change);
 }
 
 void setup() {
