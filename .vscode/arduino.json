@@ -1,6 +1,5 @@
 {
     "board": "MiniCore:avr:328",
     "configuration": "bootloader=true,variant=modelP,BOD=2v7,LTO=Os_flto,clock=8MHz_internal",
-    "sketch": "main.cpp",
-    "port": "/dev/cu.usbmodem1421"
+    "sketch": "main.cpp"
 }

@@ -7,7 +7,21 @@
 #if DEBUG
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
-#include <FastLED.h> 
+#include <FastLED.h>
+
+/* Timer FSM */
+enum timerFSM_state_t {
+    IDLE_ST,
+    SELECT_ST,
+    COUNTDOWN_ST,
+    ALERT_ST,
+    COUNTUP_ST,
+    SET_TIMER_BRIGHTNESS,
+    SET_ALERT_BRIGHTNESS,
+    SET_TICKS_PER_LED_WAIT,
+    SET_TICKS_PER_LED
+};
+static timerFSM_state_t currentState = SELECT_ST;
 
 /* LEDs */
 
@@ -77,6 +91,14 @@ static uint32_t ticksPerLevel = DFLT_TICKS_PER_LED/NUM_BRIGHT_LVLS; // Number of
 static uint_fast8_t count_idx = 0;
 static uint32_t totalTicks = 0; // Number of ticks before we exit COUNTDOWN/COUNTUP
 static uint8_t brightLvl_idx = 0;
+
+static void reset() {
+    numSelected = 0;
+    adjusted_idx = NUM_LEDS;
+    accumulated = 0;
+    FastLED.clear(true); // turn off the LEDs and write 0s to the LED array
+    currentState = SELECT_ST;
+}
 
 static void select_init() {
     FastLED.clear(true);
@@ -293,258 +315,227 @@ static void ticksPerLed_save(uint_fast16_t count) {
     #endif
 }
 
-
-
-/** FSM **/
-// # if DEBUG
-// static void debugStatePrint(bool printState) {
-//     static timerFSM_state_t previousState = SELECT_ST;
-//     static bool firstPass = true;
-//     if (previousState != timerFSM_tick || firstPass) { // only print after a state transition
-//         firstPass = false;
-//         switch(timerFSM_tick) {
-//         case IDLE_ST:
-//             if (printState) { Serial.println("timerFSM: IDLE_ST"); }
-//             break;
-//         case SELECT_ST:
-//             if (printState) { Serial.println("timerFSM: SELECT_ST"); }
-//             break;
-//         case COUNTDOWN_ST:
-//             if (printState) { Serial.println("timerFSM: COUNTDOWN_ST"); }
-//             break;
-//         case ALERT_ST:
-//             if (printState) { Serial.println("timerFSM: ALERT_ST"); }
-//             break;
-//         case COUNTUP_ST:
-//             if (printState) { Serial.println("timerFSM: COUNTUP_ST"); }
-//             break;
-//         case SET_TIMER_BRIGHTNESS:
-//             if (printState) { Serial.println("timerFSM: SET_TIMER_BRIGHTNESS"); }
-//             break;
-//         case SET_ALERT_BRIGHTNESS:
-//             if (printState) { Serial.println("timerFSM: SET_ALERT_BRIGHTNESS"); }
-//             break;
-//         case SET_TICKS_PER_LED_WAIT:
-//             if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED_WAIT"); }
-//             break;
-//         case SET_TICKS_PER_LED:
-//             if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED"); }
-//             break;
-//         default: // error, we forgot to include a state
-//             Serial.println("timerFSM debugStatePrint: hit default");
-//             break;
-//         }
-//     }
-//     previousState = timerFSM_tick;
-//     return;
-// }
-// #endif
-
-static void reset() {
-    numSelected = 0;
-    adjusted_idx = NUM_LEDS;
-    accumulated = 0;
-    FastLED.clear(true); // turn off the LEDs and write 0s to the LED array
-    timerFSM_tick = select_st;
-}
-
 void timerFSM_init() {
     FastLED.addLeds<WS2812, LEDS_DATA_PIN, GRB>(lights, NUM_LEDS);
     reset();
     return;
 }
 
-static uint_fast16_t counter = 0;
-
-void select_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action         
-    if (change != 0) {
-        counter = 0;
-        select_changeBy(change);
-    }
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK) {
-        if (numSelected > 0) {
-            counter = 0;
-            countdown_init();
-            timerFSM_tick = countdown_st;
+/** FSM **/
+# if DEBUG
+static void debugStatePrint(bool printState) {
+    static timerFSM_state_t previousState = SELECT_ST;
+    static bool firstPass = true;
+    if (previousState != currentState || firstPass) { // only print after a state transition
+        firstPass = false;
+        switch(currentState) {
+        case IDLE_ST:
+            if (printState) { Serial.println("timerFSM: IDLE_ST"); }
+            break;
+        case SELECT_ST:
+            if (printState) { Serial.println("timerFSM: SELECT_ST"); }
+            break;
+        case COUNTDOWN_ST:
+            if (printState) { Serial.println("timerFSM: COUNTDOWN_ST"); }
+            break;
+        case ALERT_ST:
+            if (printState) { Serial.println("timerFSM: ALERT_ST"); }
+            break;
+        case COUNTUP_ST:
+            if (printState) { Serial.println("timerFSM: COUNTUP_ST"); }
+            break;
+        case SET_TIMER_BRIGHTNESS:
+            if (printState) { Serial.println("timerFSM: SET_TIMER_BRIGHTNESS"); }
+            break;
+        case SET_ALERT_BRIGHTNESS:
+            if (printState) { Serial.println("timerFSM: SET_ALERT_BRIGHTNESS"); }
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED_WAIT"); }
+            break;
+        case SET_TICKS_PER_LED:
+            if (printState) { Serial.println("timerFSM: SET_TICKS_PER_LED"); }
+            break;
+        default: // error, we forgot to include a state
+            Serial.println("timerFSM debugStatePrint: hit default");
+            break;
         }
-        else {
-            counter = 0;
-            countup_init();
-            timerFSM_tick = countup_st;
-        }
     }
-    else if (accumulated >= NUM_PREF_DETENTS) {
-        counter = 0;
-        initBrightnessCount();
-        timerFSM_tick = setTimerBrightness_st;
-    }
-    else if (accumulated <= -(NUM_PREF_DETENTS)) {
-        counter = 0;
-        ticksPerLedWait_init();
-        timerFSM_tick = setTicksPerLEDWait_st;
-    }
-    else if (counter >= TIMEOUT_TICKS) {
-        FastLED.clear(true);
-        timerFSM_tick = idle_st;
-    }
+    previousState = currentState;
+    return;
 }
+#endif
 
-void countdown_st(uint_fast8_t btns, int_fast8_t change) {
+void timerFSM_tick(uint_fast8_t btns, int_fast8_t change) {
+    static uint_fast16_t counter = 0;
+
+    #if DEBUG
+    debugStatePrint(true);
+    #endif
+
     // State Action
-    ++counter;
+    switch(currentState) {
+        case IDLE_ST:
+            if (btns != 0 || change != 0) {
+                counter = 0;
+                select_init();
+                currentState = SELECT_ST;
+            }
+            else {
+                return;
+            }
+            // Don't break.  Any changes in IDLE_ST should move us to SELECT_ST and then happen.
+        case SELECT_ST:
+            if (change != 0) {
+                counter = 0;
+                select_changeBy(change);
+                break;
+            }
+            ++counter;
+            break;
+        case COUNTDOWN_ST:
+            ++counter;
+            break;
+        case ALERT_ST:
+            ++counter;
+            break;
+        case COUNTUP_ST:
+            ++counter;
+            break;
+        case SET_TIMER_BRIGHTNESS:
+            if (change != 0) {
+                counter = 0;
+                brightnessCountUpdate(change);
+                break;
+            }
+            ++counter;
+            break;
+        case SET_ALERT_BRIGHTNESS:
+            if (change != 0) {
+                counter = 0;
+                brightnessAlertUpdate(change);
+                break;
+            }
+            ++counter;
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            ++counter;
+            break;
+        case SET_TICKS_PER_LED:
+            ++counter;
+            break;
+        default:
+            #if DEBUG
+            Serial.println("timerFSM_tick(): state update hit default");
+            #endif
+            break;
+    }
 
-    // State Update
+    // State Transitions
     if (btns & BTN_RESET_MASK) {
         counter = 0;
         reset();
-        return;
     }
 
-    if (counter % ticksPerLevel == 0) {
-        countdown_update();
-    }
-    else if (counter >= totalTicks) {
-        counter = 0;
-        timerFSM_tick = alert_st;
-    }
-}
-
-void alert_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK || counter >= ALARM_TIMEOUT_TICKS) {
-        counter = 0;
-        countup_init();
-        timerFSM_tick = countup_st;
-    }
-    else if ((counter % TICKS_PER_FLASH_TOGGLE) == 0) {
-        alert_toggle();
-    }
-}
-
-void countup_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK || counter >= totalTicks) {
-        counter = 0;
-        select_init();
-        timerFSM_tick = select_st;
-    }
-    else if (counter % ticksPerLevel == 0) {
-        countup_update();
-    }
-}
-
-void setTimerBrightness_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    if (change != 0) {
-        counter = 0;
-        brightnessCountUpdate(change);
-    }
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK) {
-        counter = 0;
-        initBrightnessAlert();
-        timerFSM_tick = setAlertBrightness_st;
-    }
-    else if (counter >= TIMEOUT_TICKS) {
-        counter = 0;
-        reset(); // moves to SELECT_ST
-    }
-}
-
-void setAlertBrightness_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    if (change != 0) {
-        counter = 0;
-        brightnessAlertUpdate(change);
-    }
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (counter >= TIMEOUT_TICKS
-        || (btns & BTN_START_MASK)) {
-        setBrightness_save();
-        counter = 0;
-        reset(); // moves to SELECT_ST
-    }
-}
-
-void setTicksPerLEDWait_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK) {
-        counter = 0;
-        ticksPerLed_init();
-        timerFSM_tick = setTicksPerLED_st;
-    }
-    else if (counter >= TIMEOUT_TICKS) {
-        counter = 0;
-        reset(); // moves to SELECT_ST
-    }
-}
-
-void setTicksPerLED_st(uint_fast8_t btns, int_fast8_t change) {
-    // State Action
-    ++counter;
-
-    // State Update
-    if (btns & BTN_RESET_MASK) {
-        counter = 0;
-        reset();
-        return;
-    }
-
-    if (btns & BTN_START_MASK) {
-        ticksPerLed_save(counter);
-        reset(); // moves to SELECT_ST
+    switch(currentState) {
+        case IDLE_ST:
+        case SELECT_ST:
+            if (btns & BTN_START_MASK) {
+                if (numSelected > 0) {
+                    counter = 0;
+                    countdown_init();
+                    currentState = COUNTDOWN_ST;
+                }
+                else {
+                    counter = 0;
+                    countup_init();
+                    currentState = COUNTUP_ST;
+                }
+            }
+            else if (accumulated >= NUM_PREF_DETENTS) {
+                counter = 0;
+                initBrightnessCount();
+                currentState = SET_TIMER_BRIGHTNESS;
+            }
+            else if (accumulated <= -(NUM_PREF_DETENTS)) {
+                counter = 0;
+                ticksPerLedWait_init();
+                currentState = SET_TICKS_PER_LED_WAIT;
+            }
+            else if (counter >= TIMEOUT_TICKS) {
+                FastLED.clear(true);
+                currentState = IDLE_ST;
+            }
+            break;
+        case COUNTDOWN_ST:
+            if (counter % ticksPerLevel == 0) {
+                countdown_update();
+            }
+            else if (counter >= totalTicks) {
+                counter = 0;
+                currentState = ALERT_ST;
+            }
+            break;
+        case ALERT_ST:
+            if (btns & BTN_START_MASK || counter >= ALARM_TIMEOUT_TICKS) {
+                counter = 0;
+                countup_init();
+                currentState = COUNTUP_ST;
+            }
+            else if ((counter % TICKS_PER_FLASH_TOGGLE) == 0) {
+                alert_toggle();
+            }
+            break;
+        case COUNTUP_ST:
+            if (btns & BTN_START_MASK || counter >= totalTicks) {
+                counter = 0;
+                select_init();
+                currentState = SELECT_ST;
+            }
+            else if (counter % ticksPerLevel == 0) {
+                countup_update();
+            }
+            break;
+        case SET_TIMER_BRIGHTNESS:
+            if (btns & BTN_START_MASK) {
+                counter = 0;
+                initBrightnessAlert();
+                currentState = SET_ALERT_BRIGHTNESS;
+            }
+            else if (counter >= TIMEOUT_TICKS) {
+                counter = 0;
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        case SET_ALERT_BRIGHTNESS:
+            if (counter >= TIMEOUT_TICKS
+                || (btns & BTN_START_MASK)) {
+                setBrightness_save();
+                counter = 0;
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        case SET_TICKS_PER_LED_WAIT:
+            if (btns & BTN_START_MASK) {
+                counter = 0;
+                ticksPerLed_init();
+                currentState = SET_TICKS_PER_LED;
+            }
+            else if (counter >= TIMEOUT_TICKS) {
+                counter = 0;
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        case SET_TICKS_PER_LED:
+            if (btns & BTN_START_MASK) {
+                ticksPerLed_save(counter);
+                reset(); // moves to SELECT_ST
+            }
+            break;
+        default:
+            #if DEBUG
+            Serial.println("timerFSM_tick(): state transition hit default");
+            #endif
+            break;
     }
 }
