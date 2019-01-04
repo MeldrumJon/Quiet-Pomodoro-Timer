@@ -11,6 +11,7 @@
 #include "usart.h"
 #include "encoder.h"
 #include "wdt.h"
+#include "fsm/states.h"
 
 #define LED_PIN_MASK (0x2)
 
@@ -26,31 +27,19 @@ int main ()
 	PORTC = 0xFF;
 	PORTD = 0xFF;
 	sei();
-	
 	// Setup
+	encoder_init(); // Set up encoder interrupts
 	power_usart0_enable(); // Setup UART
 	usart_init();
 	stdout = &uart_stream;
-	
-	encoder_init(); // Set up encoder interrupts
-	
-	// Test: We are ready!
-	printf("\r\nHello world!\r\n"); // Does the UART work?
+	usart_sendChar('\r'); // Does the UART work?
+	usart_sendChar('\n');
+	usart_sendString("Hello ");
+	printf("world!\r\n");
 
-	uint16_t count = 0; // Count of WDT interrupts
-	wdt_start(WDT_1S); // Interrupt every 4S
+	// Start state machine execution.
+	state_idle_init();
 	while(1) {
-		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-		sleep_enable();
-		sleep_mode();
-		wdt_start(WDT_8S); // Interrupt every 4S
-		printf("WOKE UP!\r\n");
-		int_fast8_t value = encoder_delta();
-		if (value != 0) {
-			printf("Delta: %d\r\n", value);
-		}
-		if (wdt_handleTimeout()) {
-			printf("Timer Expired %d\r\n", count++);
-		}
+		(*fsm_action)();
 	}
 }

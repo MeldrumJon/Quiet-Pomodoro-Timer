@@ -6,8 +6,8 @@ BUILD_DIR := ./build
 PWD=$(shell pwd)
 $(shell mkdir -p $(PWD)/$(BUILD_DIR))
 
-C_FILES := $(wildcard $(SRC_DIR)/*.c)
-H_FILES := $(wildcard $(SRC_DIR)/*.h)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c)
+H_FILES := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(SRC_DIR)/*/*.h)
 
 $(BUILD_DIR)/prgm.hex: $(BUILD_DIR)/prgm.elf
 	avr-objcopy -j .text -j .data -O ihex $(BUILD_DIR)/prgm.elf $(BUILD_DIR)/prgm.hex
@@ -27,4 +27,4 @@ program: $(BUILD_DIR)/prgm.hex
 	avrdude -v -c arduino -p m328p -b 19200 -P /dev/cu.usbmodem14101 -U flash:w:$(BUILD_DIR)/prgm.hex
 
 serial:
-	screen /dev/cu.usbserial-A5XK3RJT 9600
+	screen /dev/cu.usbserial-A5XK3RJT 38400
