@@ -1,5 +1,7 @@
-===Getting Arduino to Find Libraries===
+# Quiet Pomodoro Timer
 
-You must make symbolic links to these libraries in ~/Documents/Arduino/Libraries
+## Let Arduino Find the User Libraries
+
+You must make symbolic links in ~/Documents/Arduino/Libraries to the folders in lib/
 
 
