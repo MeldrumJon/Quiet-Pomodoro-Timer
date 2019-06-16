@@ -1,12 +1,30 @@
-###### Build #####
-SRC_DIR := ./src
-BUILD_DIR := ./build
+# Chip Info
+F_CPU := 8000000
+MCU := atmega328p
 
-# Create the build folder if it does not exist
-PWD=$(shell pwd)
+# Compiler Options
+FLAGS := "-O2 -Wall -mmcu=atmega328p -DF_CPU=8000000L"
+
+# Folders
+PWD=$(shell pwd) # Create the build folder if it does not exist
 $(shell mkdir -p $(PWD)/$(BUILD_DIR))
 
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c)
+ARDUINO_CORE := arduino-core
+SRC_DIR := src
+BUILD_DIR := build
+
+# Build arduino core
+CORE_SOURCES := $(shell find $(ARDUINO_CORE) -name '*.cpp' -o -name '*.c')
+CORE_HEADERS := $(shell find $(ARDUINO_CORE) -name '*.h')
+CORE_OBJECTS := $(patsubst $(ARDUINO_CORE)/%.c,$(ARDUINO_CORE)/%.o,$(CORE_SOURCES))
+
+$(BUILD_DIR)/%.o: $(CORE_SOURCES)
+	avr-gcc $(FLAGS) -I$(ARDUINO_CORE) -o $@ $<
+
+$(BUILD_DIR)/core.a: $(CORE_OBJECTS)
+	echo $(CORE_OBJECTS)
+
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c) $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp)
 H_FILES := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(SRC_DIR)/*/*.h)
 
 $(BUILD_DIR)/prgm.hex: $(BUILD_DIR)/prgm.elf
@@ -24,7 +42,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 program: $(BUILD_DIR)/prgm.hex
-	avrdude -v -c arduino -p m328p -b 19200 -P /dev/cu.usbmodem14101 -U flash:w:$(BUILD_DIR)/prgm.hex
+	avrdude -v -c usbtiny -p m328p -b 19200 -U flash:w:$(BUILD_DIR)/prgm.hex
 
 serial:
 	screen /dev/cu.usbserial-A5XK3RJT 38400

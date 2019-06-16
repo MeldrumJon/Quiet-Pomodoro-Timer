@@ -1,4 +1,4 @@
 # Quiet-Pomodoro-Timer
 
-A simple timer using a 12-LED WS2812B ring and rotary encoder.  The LED ring indicates the time 
-remaining and flashes when time expires.
+arduino-core: contains cores/arduino and variants/standard from 
+[ArduinoCore-avr](https://github.com/arduino/ArduinoCore-avr)
