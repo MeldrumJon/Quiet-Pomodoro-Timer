@@ -1,41 +1,171 @@
-#include "Arduino.h"
+#define DEBUG
 
-/*
-  Blink
+#include <Arduino.h>
+#include <avr/pgmspace.h>
+#include <avr/io.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include <LCDWIKI_GUI.h> //Core graphics library
+#include <LCDWIKI_SPI.h> //Hardware-specific library
 
-  Turns an LED on for one second, then off for one second, repeatedly.
+#define BLACK   0x0000
+#define BLUE    0x001F
+#define RED     0xF800
+#define GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0
+#define WHITE   0xFFFF
 
-  Most Arduinos have an on-board LED you can control. On the UNO, MEGA and ZERO
-  it is attached to digital pin 13, on MKR1000 on pin 6. LED_BUILTIN is set to
-  the correct LED pin independent of which board is used.
-  If you want to know what pin the on-board LED is connected to on your Arduino
-  model, check the Technical Specs of your board at:
-  https://www.arduino.cc/en/Main/Products
+/**
+ * Sets the baud rate, enables the transmitter, but does not enable interrupts.
+ */
+void usart_init();
 
-  modified 8 May 2014
-  by Scott Fitzgerald
-  modified 2 Sep 2016
-  by Arturo Guadalupi
-  modified 8 Sep 2016
-  by Colby Newman
+/**
+ * Send a character over UART.  This function is more efficient than using printf.
+ */
+void usart_sendChar(char c);
 
-  This example code is in the public domain.
+/**
+ * Send a string over UART.  This function is more efficient than using printf.
+ */
+void usart_sendString(char* str);
 
-  http://www.arduino.cc/en/Tutorial/Blink
-*/
+/**
+ * Transmit a character over UART.
+ *
+ * @param data Character to trasmit.
+ * @param stream Ignored. Included so that we can use this function to set up a file 
+ *               stream
+ * @return Always 0.  Returns an int.  Again included to match the definition of the file 
+ *         stream function pointer
+ */
+int usart_put(char data, FILE* stream);
 
-#define MY_LED 9
+// Sets the baud rate.  See Table 20-6 in the ATmega328p datasheet for values with low
+// error.
+#define BAUD 38400UL
+#define UBRR_VAL ((F_CPU/(16*BAUD))-1) // See Table 20-1 for baud rate register equations
 
-// the setup function runs once when you press reset or power the board
-void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
-  pinMode(MY_LED, OUTPUT);
+// Wait until a transmit is complete before exiting a USART function.
+// This is useful if you are planning on going to sleep right after exiting the function.
+// (waiting for the transmit to complete will not corrupt the last 2 bytes sent)
+#define WAIT_UNTIL_TRANSMIT_COMPLETE 1
+
+// Filestream for use with stdio.
+FILE uart_stream; 
+
+/**
+ * Waits until the transmit buffer can receive data, then sends the byte.
+ */
+static inline void send(char c) {
+	loop_until_bit_is_set(UCSR0A, UDRE0); // Wait until TX buffer ready to receive data
+	UDR0 = c; // Send the data.
 }
 
-// the loop function runs over and over again forever
-void loop() {
-  digitalWrite(MY_LED, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(MY_LED, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);                       // wait for a second
+/**
+ * Waits for a transmit to complete.
+ * This is useful if you are planning on turning off the UART after returning from a USART
+ * function (if you went to sleep before the transmit was complete, the last byte would
+ * be corrupted).
+ */
+static inline void wait_for_complete() {
+	loop_until_bit_is_set (UCSR0A, TXC0); // Wait until transmit is complete.
+	UCSR0A |= _BV(TXC0); // Clear the transmit complete bit (toggle-on-write)
 }
+
+/**
+ * Sets the baud rate, enables the transmitter, but does not enable interrupts.
+ */
+void usart_init() {
+
+	// Set baud rate
+	UBRR0H = (unsigned char) (UBRR_VAL >> 8);
+	UBRR0L = (unsigned char) UBRR_VAL;
+	
+	// Enable transmitter (w/out interrupts)
+	UCSR0B = _BV(TXEN0);
+	UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); // 8 bit data, 1 stop bit
+	
+	return;
+}
+
+/**
+ * Send a character over UART.  This function is more efficient than using printf.
+ */
+void usart_sendChar(char c) {
+	send(c);
+
+	#if WAIT_UNTIL_TRANSMIT_COMPLETE
+	wait_for_complete();
+	#endif
+	
+	return;
+}
+
+/**
+ * Send a string over UART.  This function is more efficient than using printf.
+ */
+void usart_sendString(char* str) {
+	while ((*str) != '\0') { // Send until we hit NULL terminator.
+		send(*(str++));
+	}
+
+	#if WAIT_UNTIL_TRANSMIT_COMPLETE
+	wait_for_complete();
+	#endif
+	
+	return;
+}
+
+/**
+ * Transmit a character over UART.
+ *
+ * @param data Character to trasmit.
+ * @param stream Ignored. Included so that we can use this function to set up a file 
+ *               stream
+ * @return Always 0.  Returns an int.  Again included to match the definition of the file 
+ *         stream function pointer
+ */
+int usart_put(char data, FILE *stream) {
+	send(data);
+
+	#if WAIT_UNTIL_TRANSMIT_COMPLETE
+	wait_for_complete();
+	#endif
+	
+	return 0;
+}
+
+
+LCDWIKI_SPI mylcd(SSD1283A,10,9,8,A3); //hardware spi,cs,cd,reset
+
+extern const unsigned short img[4096] PROGMEM;
+
+void setup() 
+{
+	mylcd.Init_LCD();
+	mylcd.Fill_Screen(BLACK);
+
+// 	fdev_setup_stream(&uart_stream, usart_put, NULL, _FDEV_SETUP_WRITE);
+// 	usart_init();
+// 	stdout = &uart_stream;
+// 	usart_sendChar('\r'); // Does the UART work?
+// 	usart_sendChar('\n');
+// 	usart_sendString("Hello ");
+// 	printf("world!\r\n");
+}
+
+void loop() 
+{
+	for (uint16_t i = 0; i < 64; ++i) {
+		for (uint16_t j = 0; j < 64; ++j) {
+			uint16_t color = pgm_read_word_near(img + (j<<6) + i);
+			mylcd.Draw_Pixe(33+i, 33+j, color);
+		}
+	}
+
+  delay(10000);
+}
+
