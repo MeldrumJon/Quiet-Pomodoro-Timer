@@ -1577,9 +1577,9 @@ void LCDWIKI_SPI::start(uint16_t ID)
 			XC=0x45,YC=0x44,CC=0x22,RC=HX8357_RAMRD,SC1=0x41,SC2=0x42,MD=0x03,VL=1,R24BIT=0;
 		 	static const uint16_t SSD1283A_regValues[] PROGMEM = 
 			{
-				0x10, 0x2F8E,            
+				0x10, 0x7FD0,            
             	0x11, 0x000C,  
-            	0x07, 0x0021,           
+            	0x07, 0x0029,           
             	0x28, 0x0006,      
             	0x28, 0x0005,     
             	0x27, 0x057F,        
@@ -1589,9 +1589,9 @@ void LCDWIKI_SPI::start(uint16_t ID)
             	0x29, 0x80B0,   
             	TFTLCD_DELAY16, 30, 
             	0x29, 0xFFFE,
-            	0x07, 0x0223,
+            	0x07, 0x022B,
             	TFTLCD_DELAY16, 30, 
-            	0x07, 0x0233,
+            	0x07, 0x023B,
             	0x01, 0x2183,
             	0x03, 0x6830,
             	0x2F, 0xFFFF,

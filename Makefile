@@ -29,7 +29,7 @@ LIB_PARAMS := $(foreach d, $(LIB_PATHS), -I$d)
 #####
 # Compiler Settings
 #####
-FLAGS := -mmcu=atmega328p -D F_CPU=8000000 -D ARDUINO=106 -I$(ARDUINO_DIR) -I$(SRC_DIR) $(LIB_PARAMS)
+FLAGS := -mmcu=atmega328p -D F_CPU=8000000 -D ARDUINO=9999999 -I$(ARDUINO_DIR) -I$(SRC_DIR) $(LIB_PARAMS)
 CPP_FLAGS := -g -Wall -Os $(FLAGS)
 C_FLAGS := -g -Wall -Os $(FLAGS)
 
