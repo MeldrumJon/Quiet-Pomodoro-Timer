@@ -27,6 +27,13 @@
 #define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT 128 // Change this to 96 for 1.27" OLED.
 
+#define SCREEN_CENTER_X (SCREEN_WIDTH/2)
+#define SCREEN_CENTER_Y (SCREEN_HEIGHT/2)
+
+#define TEXT_SCALE 3
+#define TEXT_WIDTH (6*TEXT_SCALE)
+#define TEXT_HEIGHT (8*TEXT_SCALE)
+
 // Color definitions
 #define	BLACK           0x0000
 #define	BLUE            0x001F
@@ -36,285 +43,139 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0  
 #define WHITE           0xFFFF
+#define GREY 0x8410
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
 
-// Option 1: use any pins but a little slower
-// Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS_PIN, DC_PIN, MOSI_PIN, SCLK_PIN, RST_PIN);  
-
-// Option 2: must use the hardware SPI pins 
-// (for UNO thats sclk = 13 and sid = 11) and pin 10 must be 
-// an output. This is much faster - also required if you want
-// to use the microSD card (see the image drawing example)
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, 10, 9, 8);
 
-float p = 3.1415926;
+/*
+ * Display sleep mode
+ */
 
-void testlines(uint16_t color) {
-   tft.fillScreen(BLACK);
-   for (uint16_t x=0; x < tft.width()-1; x+=6) {
-     tft.drawLine(0, 0, x, tft.height()-1, color);
-   }
-   for (uint16_t y=0; y < tft.height()-1; y+=6) {
-     tft.drawLine(0, 0, tft.width()-1, y, color);
-   }
-   
-   tft.fillScreen(BLACK);
-   for (uint16_t x=0; x < tft.width()-1; x+=6) {
-     tft.drawLine(tft.width()-1, 0, x, tft.height()-1, color);
-   }
-   for (uint16_t y=0; y < tft.height()-1; y+=6) {
-     tft.drawLine(tft.width()-1, 0, 0, y, color);
-   }
-   
-   tft.fillScreen(BLACK);
-   for (uint16_t x=0; x < tft.width()-1; x+=6) {
-     tft.drawLine(0, tft.height()-1, x, 0, color);
-   }
-   for (uint16_t y=0; y < tft.height()-1; y+=6) {
-     tft.drawLine(0, tft.height()-1, tft.width()-1, y, color);
-   }
-
-   tft.fillScreen(BLACK);
-   for (uint16_t x=0; x < tft.width()-1; x+=6) {
-     tft.drawLine(tft.width()-1, tft.height()-1, x, 0, color);
-   }
-   for (uint16_t y=0; y < tft.height()-1; y+=6) {
-     tft.drawLine(tft.width()-1, tft.height()-1, 0, y, color);
-   }
-   
+void setContrast(uint8_t x) {
+	tft.sendCommand(SSD1351_CMD_CONTRASTMASTER, &x, 1);
 }
 
-void testdrawtext(char *text, uint16_t color) {
-  tft.setCursor(0,0);
-  tft.setTextColor(color);
-  tft.print(text);
+void displayOff() {
+	tft.sendCommand(SSD1351_CMD_DISPLAYOFF, (const uint8_t *) NULL, 0);
+	uint8_t cmd = 0x0;
+	tft.sendCommand(SSD1351_CMD_FUNCTIONSELECT, &cmd, 1);
 }
 
-void testfastlines(uint16_t color1, uint16_t color2) {
-   tft.fillScreen(BLACK);
-   for (uint16_t y=0; y < tft.height()-1; y+=5) {
-     tft.drawFastHLine(0, y, tft.width()-1, color1);
-   }
-   for (uint16_t x=0; x < tft.width()-1; x+=5) {
-     tft.drawFastVLine(x, 0, tft.height()-1, color2);
-   }
+void displayOn() {
+	uint8_t cmd = 0x1;
+	tft.sendCommand(SSD1351_CMD_FUNCTIONSELECT, &cmd, 1);
+	_delay_ms(1);
+	tft.sendCommand(SSD1351_CMD_DISPLAYON, (const uint8_t *) NULL, 0);
 }
 
-void testdrawrects(uint16_t color) {
- tft.fillScreen(BLACK);
- for (uint16_t x=0; x < tft.height()-1; x+=6) {
-   tft.drawRect((tft.width()-1)/2 -x/2, (tft.height()-1)/2 -x/2 , x, x, color);
- }
+/*
+ * Display Drawing
+ */
+
+static int8_t circle_x[] = { -26, -45, -52, -45, -26, 0, 26, 45, 52, 45, 26, 0 };
+static int8_t circle_y[] = { -45, -26, 0, 26, 45, 52, 45, 26, 0, -26, -45, -52 };
+
+static char minute_str[] = "   ";
+static uint8_t last_mins = 0;
+static uint8_t last_circles = 0;
+static uint8_t last_fade = 0;
+
+void drawTime(uint8_t mins) {
+	uint8_t circles = mins / 5;
+	uint8_t fade = mins % 5;
+	uint16_t fade_color = (6*fade) << 11;
+	sprintf(minute_str, "%02d", mins);
+	
+	tft.fillScreen(BLACK);
+	
+	tft.setCursor(SCREEN_CENTER_X-(TEXT_WIDTH-TEXT_SCALE/2), SCREEN_CENTER_Y-(TEXT_HEIGHT-TEXT_SCALE)/2); // Center 2 chars on screen
+	tft.print(minute_str);
+	
+	uint8_t i;
+	for (i = 0; i < circles; ++i) {
+		tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, RED);
+	}
+	
+	tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, fade_color);
+	
+	last_mins = mins;
+	last_circles = circles;
+	last_fade = fade;
+	
+	return;
 }
 
-void testfillrects(uint16_t color1, uint16_t color2) {
- tft.fillScreen(BLACK);
- for (uint16_t x=tft.height()-1; x > 6; x-=6) {
-   tft.fillRect((tft.width()-1)/2 -x/2, (tft.height()-1)/2 -x/2 , x, x, color1);
-   tft.drawRect((tft.width()-1)/2 -x/2, (tft.height()-1)/2 -x/2 , x, x, color2);
- }
+void diffTime(uint8_t mins) {
+	uint8_t circles = mins / 5;
+	uint8_t fade = mins % 5;
+	uint16_t fade_color = (6*fade) << 11;
+	sprintf(minute_str, "%02d", mins);
+	
+	tft.setCursor(SCREEN_CENTER_X-(TEXT_WIDTH-TEXT_SCALE/2), SCREEN_CENTER_Y-(TEXT_HEIGHT-TEXT_SCALE)/2); // Center 2 chars on screen
+	tft.print(minute_str);
+	
+	if (mins < last_mins) {
+		while (last_circles > circles) {
+			tft.fillCircle(SCREEN_CENTER_X+circle_x[last_circles], SCREEN_CENTER_Y+circle_y[last_circles], 5, BLACK);
+			last_circles--;
+		}
+		tft.fillCircle(SCREEN_CENTER_X+circle_x[circles], SCREEN_CENTER_Y+circle_y[circles], 5, fade_color);
+	}
+	else {
+		while (last_circles < circles) {
+			tft.fillCircle(SCREEN_CENTER_X+circle_x[last_circles], SCREEN_CENTER_Y+circle_y[last_circles], 5, RED);
+			last_circles++;
+		}
+		tft.fillCircle(SCREEN_CENTER_X+circle_x[circles], SCREEN_CENTER_Y+circle_y[circles], 5, fade_color);
+	}
+	
+	last_mins = mins;
+	last_circles = circles;
+	last_fade = fade;
+	
+	return;
 }
 
-void testfillcircles(uint8_t radius, uint16_t color) {
-  for (uint8_t x=radius; x < tft.width()-1; x+=radius*2) {
-    for (uint8_t y=radius; y < tft.height()-1; y+=radius*2) {
-      tft.fillCircle(x, y, radius, color);
-    }
-  }  
-}
-
-void testdrawcircles(uint8_t radius, uint16_t color) {
-  for (uint8_t x=0; x < tft.width()-1+radius; x+=radius*2) {
-    for (uint8_t y=0; y < tft.height()-1+radius; y+=radius*2) {
-      tft.drawCircle(x, y, radius, color);
-    }
-  }  
-}
-
-void testtriangles() {
-  tft.fillScreen(BLACK);
-  int color = 0xF800;
-  int t;
-  int w = tft.width()/2;
-  int x = tft.height();
-  int y = 0;
-  int z = tft.width();
-  for(t = 0 ; t <= 15; t+=1) {
-    tft.drawTriangle(w, y, y, x, z, x, color);
-    x-=4;
-    y+=4;
-    z-=4;
-    color+=100;
-  }
-}
-
-void testroundrects() {
-  tft.fillScreen(BLACK);
-  int color = 100;
-  
-  int x = 0;
-  int y = 0;
-  int w = tft.width();
-  int h = tft.height();
-  for(int i = 0 ; i <= 24; i++) {
-    tft.drawRoundRect(x, y, w, h, 5, color);
-    x+=2;
-    y+=3;
-    w-=4;
-    h-=6;
-    color+=1100;
-    Serial.println(i);
-  }
-}
-
-void tftPrintTest() {
-  tft.fillScreen(BLACK);
-  tft.setCursor(0, 5);
-  tft.setTextColor(RED);  
-  tft.setTextSize(1);
-  tft.println("Hello World!");
-  tft.setTextColor(YELLOW);
-  tft.setTextSize(2);
-  tft.println("Hello World!");
-  tft.setTextColor(BLUE);
-  tft.setTextSize(3);
-  tft.print(1234.567);
-  delay(1500);
-  tft.setCursor(0, 5);
-  tft.fillScreen(BLACK);
-  tft.setTextColor(WHITE);
-  tft.setTextSize(0);
-  tft.println("Hello World!");
-  tft.setTextSize(1);
-  tft.setTextColor(GREEN);
-  tft.print(p, 6);
-  tft.println(" Want pi?");
-  tft.println(" ");
-  tft.print(8675309, HEX); // print 8,675,309 out in HEX!
-  tft.println(" Print HEX!");
-  tft.println(" ");
-  tft.setTextColor(WHITE);
-  tft.println("Sketch has been");
-  tft.println("running for: ");
-  tft.setTextColor(MAGENTA);
-  tft.print(millis() / 1000);
-  tft.setTextColor(WHITE);
-  tft.print(" seconds.");
-}
-
-void mediabuttons() {
- // play
-  tft.fillScreen(BLACK);
-  tft.fillRoundRect(25, 10, 78, 60, 8, WHITE);
-  tft.fillTriangle(42, 20, 42, 60, 90, 40, RED);
-  delay(500);
-  // pause
-  tft.fillRoundRect(25, 90, 78, 60, 8, WHITE);
-  tft.fillRoundRect(39, 98, 20, 45, 5, GREEN);
-  tft.fillRoundRect(69, 98, 20, 45, 5, GREEN);
-  delay(500);
-  // play color
-  tft.fillTriangle(42, 20, 42, 60, 90, 40, BLUE);
-  delay(50);
-  // pause color
-  tft.fillRoundRect(39, 98, 20, 45, 5, RED);
-  tft.fillRoundRect(69, 98, 20, 45, 5, RED);
-  // play color
-  tft.fillTriangle(42, 20, 42, 60, 90, 40, GREEN);
-}
-
-/**************************************************************************/
-/*! 
-    @brief  Renders a simple test pattern on the screen
-*/
-/**************************************************************************/
-void lcdTestPattern(void)
-{
-  static const uint16_t PROGMEM colors[] =
-    { RED, YELLOW, GREEN, CYAN, BLUE, MAGENTA, BLACK, WHITE };
-
-  for(uint8_t c=0; c<8; c++) {
-    tft.fillRect(0, tft.height() * c / 8, tft.width(), tft.height() / 8,
-      pgm_read_word(&colors[c]));
-  }
-}
+/*
+ * Main
+ */
 
 void setup(void) {
-  Serial.begin(9600);
-  Serial.print("hello!");
-  tft.begin();
-
-  Serial.println("init");
-
-  // You can optionally rotate the display by running the line below.
-  // Note that a value of 0 means no rotation, 1 means 90 clockwise,
-  // 2 means 180 degrees clockwise, and 3 means 270 degrees clockwise.
-  //tft.setRotation(1);
-  // NOTE: The test pattern at the start will NOT be rotated!  The code
-  // for rendering the test pattern talks directly to the display and
-  // ignores any rotation.
-
-while(1) {
-  uint16_t time = millis();
-  tft.fillRect(0, 0, 128, 128, BLACK);
-  time = millis() - time;
-  
-  Serial.println(time, DEC);
-  delay(500);
-  
-  lcdTestPattern();
-  delay(500);
-  
-  tft.invert(true);
-  delay(100);
-  tft.invert(false);
-  delay(100);
-
-  tft.fillScreen(BLACK);
-  testdrawtext("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur adipiscing ante sed nibh tincidunt feugiat. Maecenas enim massa, fringilla sed malesuada et, malesuada sit amet turpis. Sed porttitor neque ut ante pretium vitae malesuada nunc bibendum. Nullam aliquet ultrices massa eu hendrerit. Ut sed nisi lorem. In vestibulum purus a tortor imperdiet posuere. ", WHITE);
-  delay(500);
-
-  // tft print function!
-  tftPrintTest();
-  delay(500);
-  
-  //a single pixel
-  tft.drawPixel(tft.width()/2, tft.height()/2, GREEN);
-  delay(500);
-
-  // line draw test
-  testlines(YELLOW);
-  delay(500);    
- 
-  // optimized lines
-  testfastlines(RED, BLUE);
-  delay(500);    
-
-
-  testdrawrects(GREEN);
-  delay(1000);
-
-  testfillrects(YELLOW, MAGENTA);
-  delay(1000);
-
-  tft.fillScreen(BLACK);
-  testfillcircles(10, BLUE);
-  testdrawcircles(10, WHITE);
-  delay(1000);
-   
-  testroundrects();
-  delay(500);
-  
-  testtriangles();
-  delay(500);
-  
-  Serial.println("done");
-  delay(1000);
-  }
+	// TFT Setup
+	tft.begin();
+	tft.setTextSize(3);
+	tft.setTextWrap(false);
+	tft.setTextColor(GREY, BLACK);
+	drawTime(0);
 }
 
 void loop() {
+	diffTime(0);
+	delay(3000);
+	diffTime(15);
+	delay(3000);
+	diffTime(21);
+	delay(3000);
+	diffTime(25);
+	delay(3000);
+	diffTime(28);
+	delay(3000);
+	diffTime(56);
+	delay(3000);
+	diffTime(60);
+	delay(3000);
+	diffTime(56);
+	delay(3000);
+	diffTime(28);
+	delay(3000);
+	diffTime(25);
+	delay(3000);
+	diffTime(21);
+	delay(3000);
+	diffTime(15);
+	delay(3000);
 }
