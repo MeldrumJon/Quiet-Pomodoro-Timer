@@ -48,6 +48,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
+#include <avr/power.h>
 
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, 10, 9, 8);
 
@@ -145,6 +146,19 @@ void diffTime(uint8_t mins) {
  */
 
 void setup(void) {
+	// Power saving
+	ADCSRA = 0; // disable ADC
+	for (uint8_t i = 0; i <= A5; i++) { // Lower power on pins
+		pinMode (i, INPUT);
+		digitalWrite (i, LOW);
+	}
+	power_adc_disable();
+// 	power_spi_disable();
+	power_timer0_disable();
+	power_timer1_disable();
+// 	power_timer2_disable();
+	power_twi_disable();
+	power_usart0_disable();	
 	// TFT Setup
 	tft.begin();
 	tft.setTextSize(3);
@@ -154,28 +168,9 @@ void setup(void) {
 }
 
 void loop() {
-	diffTime(0);
-	delay(3000);
-	diffTime(15);
-	delay(3000);
-	diffTime(21);
-	delay(3000);
-	diffTime(25);
-	delay(3000);
-	diffTime(28);
-	delay(3000);
-	diffTime(56);
-	delay(3000);
-	diffTime(60);
-	delay(3000);
-	diffTime(56);
-	delay(3000);
-	diffTime(28);
-	delay(3000);
-	diffTime(25);
-	delay(3000);
-	diffTime(21);
-	delay(3000);
-	diffTime(15);
-	delay(3000);
+	for (uint8_t i = 1; i < 60; ++i) {
+		diffTime(i);
+		_delay_ms(500);
+	}
+	drawTime(0);
 }

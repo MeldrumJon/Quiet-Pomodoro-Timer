@@ -29,7 +29,7 @@ LIB_PARAMS := $(foreach d, $(LIB_PATHS), -I$d)
 #####
 # Compiler Settings
 #####
-FLAGS := -mmcu=atmega328p -D F_CPU=8000000 -D ARDUINO=9999999 -I$(ARDUINO_DIR) -I$(SRC_DIR) $(LIB_PARAMS) -Wl,--gc-sections -ffunction-sections -fdata-sections
+FLAGS := -mmcu=atmega328p -D F_CPU=8000000UL -D ARDUINO=9999999 -I$(ARDUINO_DIR) -I$(SRC_DIR) $(LIB_PARAMS) -Wl,--gc-sections -ffunction-sections -fdata-sections
 CPP_FLAGS := -g -Wall -Os $(FLAGS)
 C_FLAGS := -g -Wall -Os $(FLAGS)
 
@@ -86,7 +86,11 @@ clean:
 
 .PHONY: program
 program: $(BUILD_DIR)/prgm.hex
-	avrdude -v -c usbtiny -p m328p -B 0.5 -U flash:w:$(BUILD_DIR)/prgm.hex
+	avrdude -v -c usbtiny -p m328p -B0.5 -U flash:w:$(BUILD_DIR)/prgm.hex
+	
+.PHONY: fuses
+fuses:
+	avrdude -v -c usbtiny -p m328p -U efuse:w:0xFF:m -U hfuse:w:0xD9:m -U lfuse:w:0xE2:m
 
 .PHONY: serial
 serial:
