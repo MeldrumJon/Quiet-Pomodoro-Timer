@@ -6,7 +6,7 @@
 #include "timer.h"
 #include "encoder.h"
 #include "btn.h"
-#include "flags.h"
+#include "disp.h"
 
 void setup(void) {
 	// Power saving
@@ -65,7 +65,7 @@ void loop(void) {
 	}
 	sei();
 	
-// 	set_sleep_mode(SLEEP_MODE_PWR_SAVE);  
-//   	sleep_enable();
-//   	sleep_cpu();
+	set_sleep_mode(SLEEP_MODE_PWR_SAVE);  
+  	sleep_enable();
+  	sleep_cpu();
 }

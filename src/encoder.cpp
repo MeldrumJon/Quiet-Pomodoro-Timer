@@ -1,5 +1,4 @@
 #include "encoder.h"
-#include "flags.h"
 #include <stdint.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>

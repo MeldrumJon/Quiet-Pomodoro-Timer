@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include "flags.h"
 #include "timer.h"
 
 #define DEBOUNCE_TICKS TIMER_TICKS(0.050)
@@ -62,7 +61,6 @@ void btn_tick(void) {
 			btn_longpress_flag = 0;
 			break;
 		default:
-			FLAGS_SET(FLAG_RESET);
 			break;
 	}
 	
@@ -99,7 +97,6 @@ void btn_tick(void) {
 			}
 			break;
 		default:
-			FLAGS_SET(FLAG_RESET);
 			break;
 	}
 }
