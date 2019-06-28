@@ -29,7 +29,7 @@ static inline void send(char c) {
  * function (if you went to sleep before the transmit was complete, the last byte would
  * be corrupted).
  */
-static inline void wait_for_complete() {
+static inline void wait_for_complete(void) {
 	loop_until_bit_is_set (UCSR0A, TXC0); // Wait until transmit is complete.
 	UCSR0A |= _BV(TXC0); // Clear the transmit complete bit (toggle-on-write)
 }
@@ -37,7 +37,7 @@ static inline void wait_for_complete() {
 /**
  * Sets the baud rate, enables the transmitter, but does not enable interrupts.
  */
-void usart_init() {
+void usart_init(void) {
 	fdev_setup_stream(&uart_stream, usart_put, NULL, _FDEV_SETUP_WRITE);
 
 	// Set baud rate
