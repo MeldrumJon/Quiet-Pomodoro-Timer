@@ -1,6 +1,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
+#include "disp.h"
 
 // Screen dimensions
 #define SCREEN_WIDTH  128
@@ -63,14 +64,20 @@ void disp_on(void) {
 	tft.sendCommand(SSD1351_CMD_DISPLAYON, (const uint8_t *) NULL, 0);
 }
 
+void disp_clear(void) {
+	tft.fillScreen(BLACK);
+	return;
+}
+
 /*
  * Display Drawing
  */
 
-void disp_drawTime(uint8_t mins) {
+void disp_drawTime(uint8_t mins, uint8_t color) {
 	uint8_t circles = mins / 5;
+	uint16_t circle_color = (color == DISP_BLUE) ? BLUE : (color == DISP_GREEN) ? GREEN : RED;
 	uint8_t fade = mins % 5;
-	uint16_t fade_color = (6*fade) << 11;
+	uint16_t fade_color = (6*fade) << color;
 	sprintf(minute_str, "%02d", mins);
 	
 	tft.fillScreen(BLACK);
@@ -80,7 +87,7 @@ void disp_drawTime(uint8_t mins) {
 	
 	uint8_t i;
 	for (i = 0; i < circles; ++i) {
-		tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, RED);
+		tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, circle_color);
 	}
 	
 	tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, fade_color);
@@ -92,10 +99,11 @@ void disp_drawTime(uint8_t mins) {
 	return;
 }
 
-void disp_diffTime(uint8_t mins) {
+void disp_diffTime(uint8_t mins, uint8_t color) {
 	uint8_t circles = mins / 5;
+	uint16_t circle_color = (color == DISP_BLUE) ? BLUE : (color == DISP_GREEN) ? GREEN : RED;
 	uint8_t fade = mins % 5;
-	uint16_t fade_color = (6*fade) << 11;
+	uint16_t fade_color = (6*fade) << color;
 	sprintf(minute_str, "%02d", mins);
 	
 	tft.setCursor(SCREEN_CENTER_X-(TEXT_WIDTH-TEXT_SCALE/2), SCREEN_CENTER_Y-(TEXT_HEIGHT-TEXT_SCALE)/2); // Center 2 chars on screen
@@ -110,7 +118,7 @@ void disp_diffTime(uint8_t mins) {
 	}
 	else {
 		while (last_circles < circles) {
-			tft.fillCircle(SCREEN_CENTER_X+circle_x[last_circles], SCREEN_CENTER_Y+circle_y[last_circles], 5, RED);
+			tft.fillCircle(SCREEN_CENTER_X+circle_x[last_circles], SCREEN_CENTER_Y+circle_y[last_circles], 5, circle_color);
 			last_circles++;
 		}
 		tft.fillCircle(SCREEN_CENTER_X+circle_x[circles], SCREEN_CENTER_Y+circle_y[circles], 5, fade_color);
@@ -121,4 +129,16 @@ void disp_diffTime(uint8_t mins) {
 	last_fade = fade;
 	
 	return;
+}
+
+void disp_alert(uint_fast8_t show_clear_n) {
+	if (show_clear_n) {
+		tft.setCursor(SCREEN_CENTER_X-(TEXT_WIDTH*3-TEXT_SCALE/2), SCREEN_CENTER_Y-(TEXT_HEIGHT-TEXT_SCALE/2)); // Center 2 chars on screen
+		tft.print("Time's");
+		tft.setCursor(SCREEN_CENTER_X-(TEXT_WIDTH*1.5-TEXT_SCALE/2), SCREEN_CENTER_Y); // Center 2 chars on screen
+		tft.print("up!");
+	}
+	else {
+		tft.fillScreen(BLACK);
+	}
 }

@@ -33,6 +33,7 @@ void btn_enable(void) {
 	EICRA |= 0x02; // Falling edge interrupt
 	EIMSK |= 0x01; // Set interrupt mask on INT0
 	cli();
+	return;
 }
 
 void btn_disable(void) {
@@ -41,6 +42,7 @@ void btn_disable(void) {
 	PORTD &= ~(0x04); // Drive low
 	EIMSK &= ~(0x01); // Disable interrupt
 	cli();
+	return;
 }
 
 void btn_tick(void) {
@@ -99,4 +101,6 @@ void btn_tick(void) {
 		default:
 			break;
 	}
+	
+	return;
 }

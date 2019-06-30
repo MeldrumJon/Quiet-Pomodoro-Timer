@@ -5,7 +5,7 @@
 volatile uint_fast8_t timer_intrpt_flag = 0;
 
 ISR(TIMER2_COMPA_vect, ISR_BLOCK) {
-	timer_intrpt_flag = !(0);
+	timer_intrpt_flag = 1;
 }
 
 void timer_enable(void) {

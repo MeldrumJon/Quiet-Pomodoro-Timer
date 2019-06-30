@@ -7,40 +7,38 @@
 #include "encoder.h"
 #include "btn.h"
 #include "disp.h"
+#include "controller.h"
 
 void setup(void) {
 	// Power saving
 	ADCSRA = 0; // disable ADC
 	for (uint8_t i = 0; i <= A5; i++) { // Lower power on pins
-		pinMode (i, OUTPUT);
+		pinMode (i, INPUT);
 		digitalWrite (i, LOW);
 	}
-	power_adc_disable();
-// 	power_spi_disable();
-	power_timer0_disable();
-	power_timer1_disable();
-// 	power_timer2_disable();
-	power_twi_disable();
-// 	power_usart0_disable();	
+	power_all_disable();
+	power_spi_enable();
+	power_timer2_enable();
 
-	usart_init();
-	stdout = &uart_stream;
-	printf("Hello world!\r\n");
+// 	power_usart0_enable();
+// 	usart_init();
+// 	stdout = &uart_stream;
+// 	printf("Hello world!\r\n");
 
 	timer_enable();
-	encoder_enable();
 	btn_enable();
+	disp_init();
+	// Encoder managed in controller.
+	controller_tick(); // Get out of the init state.
 }
 
-void loop(void) {
-	static uint16_t counter = 0;
-	
+void loop(void) {	
 	cli();
 	if (btn_intrpt_flag) {
 		btn_intrpt_flag = 0;
 		sei();
 		
-		// Do something with the button interrupt
+		controller_wakeup();
 	}
 	sei();
 	
@@ -50,22 +48,19 @@ void loop(void) {
 		sei();
 		
 		btn_tick();
-		++counter;
-		if (counter >= TIMER_TICKS(4)) {
-			counter = 0;
-			printf("4s\r\n");
-		}
-		if (btn_press_flag) {
-			int_fast8_t value = encoder_delta();
-			printf("%d\r\n", value);
-		}
-		if (btn_longpress_flag) {
-			printf("Button longpress\r\n");
-		}
+		controller_tick();
 	}
 	sei();
 	
-	set_sleep_mode(SLEEP_MODE_PWR_SAVE);  
+	cli();
+	if (controller_isOff()) {
+		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	}
+	else {
+		set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+	}
   	sleep_enable();
+  	sei();
   	sleep_cpu();
+  	sleep_disable();
 }
