@@ -120,6 +120,12 @@ uint_fast8_t controller_isOff(void) {
 void controller_tick(void) {
 	int_fast8_t delta = encoder_delta();
 
+	if (btn_longpress_flag) {
+		powerdown();
+		currentState = OFF_ST;
+		return;
+	}
+
 	// State action
 	switch (currentState) {
 		case INIT_ST:
@@ -184,7 +190,7 @@ void controller_tick(void) {
 			if (btn_press_flag) {
 				min_cnt = 0;
 				ui_to_cnt = 0;
-				disp_drawTime(minutes, DISP_RED);
+				disp_redrawCircles(minutes, DISP_RED);
 				countdown_mins = minutes;
 				currentState = COUNTDOWN_ST;
 			}
@@ -207,7 +213,7 @@ void controller_tick(void) {
 				min_cnt = 0;
 				ui_to_cnt = 0;
 				disp_setContrast(DISP_CONTRAST_ON);
-				disp_drawTime(minutes, DISP_RED);
+				disp_redrawCircles(minutes, DISP_RED);
 				countdown_mins = minutes;
 				currentState = COUNTDOWN_ST;
 			}
@@ -235,7 +241,7 @@ void controller_tick(void) {
 			if (countdown_mins <= 0 || btn_press_flag) {
 				min_cnt = 0;
 				alert_cnt = 0;
-				currentState = ALERT_ST;
+				currentState = COUNTDOWN_FINISHED_ST;
 			}
 			else if (ui_to_cnt >= UI_TIMEOUT) {
 				disp_setContrast(DISP_CONTRAST_DIM);

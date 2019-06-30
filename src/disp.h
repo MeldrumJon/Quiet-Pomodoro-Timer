@@ -16,3 +16,4 @@ void disp_clear(void);
 void disp_drawTime(uint8_t mins, uint8_t color);
 void disp_diffTime(uint8_t mins, uint8_t color);
 void disp_alert(uint_fast8_t show_clear_n);
+void disp_redrawCircles(uint8_t mins, uint8_t color);

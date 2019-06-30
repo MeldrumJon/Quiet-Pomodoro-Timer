@@ -99,6 +99,24 @@ void disp_drawTime(uint8_t mins, uint8_t color) {
 	return;
 }
 
+void disp_redrawCircles(uint8_t mins, uint8_t color) {
+	uint8_t circles = mins / 5;
+	uint16_t circle_color = (color == DISP_BLUE) ? BLUE : (color == DISP_GREEN) ? GREEN : RED;
+	uint8_t fade = mins % 5;
+	uint16_t fade_color = (6*fade) << color;
+	
+	uint8_t i;
+	for (i = 0; i < circles; ++i) {
+		tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, circle_color);
+	}
+	
+	tft.fillCircle(SCREEN_CENTER_X+circle_x[i], SCREEN_CENTER_Y+circle_y[i], 5, fade_color);
+	
+	last_mins = mins;
+	last_circles = circles;
+	last_fade = fade;
+}
+
 void disp_diffTime(uint8_t mins, uint8_t color) {
 	uint8_t circles = mins / 5;
 	uint16_t circle_color = (color == DISP_BLUE) ? BLUE : (color == DISP_GREEN) ? GREEN : RED;
