@@ -1,3 +1,6 @@
+#ifndef TIMER_H
+#define TIMER_H
+
 #include <stdint.h>
 
 #define TIMER_PRESCALER 1024
@@ -8,3 +11,5 @@ void timer_enable(void);
 void timer_disable(void);
 
 extern volatile uint_fast8_t timer_intrpt_flag;
+
+#endif

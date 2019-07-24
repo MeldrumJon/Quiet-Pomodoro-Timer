@@ -1,3 +1,6 @@
+#ifndef USART_H
+#define USART_H
+
 #include <stdio.h>
 
 /**
@@ -30,3 +33,5 @@ void usart_sendString(char* str);
  *         stream function pointer
  */
 int usart_put(char data, FILE* stream);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef DISP_H
+#define DISP_H
+
 #include <stdint.h>
 
 #define DISP_CONTRAST_ON 0xF
@@ -17,3 +20,5 @@ void disp_drawTime(uint8_t mins, uint8_t color);
 void disp_diffTime(uint8_t mins, uint8_t color);
 void disp_alert(uint_fast8_t show_clear_n);
 void disp_redrawCircles(uint8_t mins, uint8_t color);
+
+#endif

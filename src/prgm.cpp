@@ -2,20 +2,23 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 #include <stdio.h>
-#include "usart.h"
+// #include "usart.h"
 #include "timer.h"
 #include "encoder.h"
 #include "btn.h"
 #include "disp.h"
 #include "controller.h"
+#include "led.h"
 
 void setup(void) {
 	// Power saving
+	DDRD = 0x00; // Set pins as input
+	DDRC = 0x00;
+	DDRB = 0x00;
+	PORTD = 0x00;
+	PORTC = 0x00;
+	PORTB = 0x00;
 	ADCSRA = 0; // disable ADC
-	for (uint8_t i = 0; i <= A5; i++) { // Lower power on pins
-		pinMode (i, INPUT);
-		digitalWrite (i, LOW);
-	}
 	power_all_disable();
 	power_spi_enable();
 	power_timer2_enable();
@@ -25,11 +28,11 @@ void setup(void) {
 // 	stdout = &uart_stream;
 // 	printf("Hello world!\r\n");
 
-	timer_enable();
+	led_init();
 	btn_enable();
+	encoder_enable();
 	disp_init();
-	// Encoder managed in controller.
-	controller_tick(); // Get out of the init state.
+	timer_enable();
 }
 
 void loop(void) {	

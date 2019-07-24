@@ -1,5 +1,4 @@
 #include "btn.h"
-#include <stdio.h>
 #include <stdint.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -22,31 +21,34 @@ uint8_t btn_longpress_flag = 0;
 
 volatile uint_fast8_t btn_intrpt_flag = 0;
 
+#define BTN_DMASK 0x04
+#define INT0_EN_MASK 0x01
+
 ISR(INT0_vect, ISR_BLOCK) {
 	btn_intrpt_flag = !(0); // Do something with this flag to turn back on timer2
 }
 
 void btn_enable(void) {
 	sei();
-	DDRD &= ~(0x04); // Set pin as input
-	PORTD |= 0x04; // Activate pull-up
+	DDRD &= ~(BTN_DMASK); // Set pin as input
+	PORTD |= BTN_DMASK; // Activate pull-up
 	EICRA |= 0x02; // Falling edge interrupt
-	EIMSK |= 0x01; // Set interrupt mask on INT0
+	EIMSK |= INT0_EN_MASK; // Set interrupt mask on INT0
 	cli();
 	return;
 }
 
 void btn_disable(void) {
 	sei();
-	DDRD |= 0x04; // Set pin as out
-	PORTD &= ~(0x04); // Drive low
-	EIMSK &= ~(0x01); // Disable interrupt
+	DDRD |= BTN_DMASK; // Set pin as out
+	PORTD &= ~(BTN_DMASK); // Drive low
+	EIMSK &= ~(INT0_EN_MASK); // Disable interrupt
 	cli();
 	return;
 }
 
 void btn_tick(void) {
-	uint8_t btn = !(PIND & 0x04); // Get button state (active-low)
+	uint8_t btn = !(PIND & BTN_DMASK); // Get button state (active-low)
 
 	// State action
 	switch (currentState) {

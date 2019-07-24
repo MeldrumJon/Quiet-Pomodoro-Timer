@@ -1,14 +1,14 @@
-// #define DEBUG
+// #define CONTROLLER_DEBUG
 
 #include "controller.h"
+#ifdef CONTROLLER_DEBUG
+#include <stdio.h>
+#endif
 #include "disp.h"
 #include "btn.h"
 #include "timer.h"
 #include "encoder.h"
-
-#ifdef DEBUG
-#include <stdio.h>
-#endif
+#include "led.h"
 
 static enum controller_st_t {
 	INIT_ST,
@@ -55,7 +55,7 @@ static void powerup(void) {
 // static uint16_t mins;
 // static uint16_t ui_to_cnt;
 
-#ifdef DEBUG
+#ifdef CONTROLLER_DEBUG
 // This is a debug state print routine. It will print the names of the states each
 // time tick() is called. It only prints states if they are different than the
 // previous state.
@@ -155,6 +155,7 @@ void controller_tick(void) {
 		case ALERT_ST:
 			++min_cnt;
 			++alert_cnt;
+			led_off();
 			break;
 		default:
 			currentState = INIT_ST;
@@ -166,7 +167,6 @@ void controller_tick(void) {
 		case INIT_ST:
 			minutes = DEFAULT_MINUTES;
 			ui_to_cnt = 0;
-			powerup();
 			disp_setContrast(DISP_CONTRAST_ON);
 			disp_drawTime(minutes, DISP_BLUE);
 			currentState = SET_TIME_ST;
@@ -282,9 +282,11 @@ void controller_tick(void) {
 			if (btn_press_flag) {
 				ui_to_cnt = 0;
 				disp_drawTime(minutes, DISP_BLUE);
+				led_off();
 				currentState = SET_TIME_ST;
 			}
 			else if (min_cnt >= ALERT_OFF_TIMEOUT) {
+				led_off();
 				powerdown();
 				currentState = OFF_ST;
 			}
@@ -292,6 +294,8 @@ void controller_tick(void) {
 				alert_cnt = 0;
 				disp_alert(alert_state);
 				alert_state = !alert_state;
+				if (alert_state) led_off();
+				else led_on();
 				currentState = ALERT_ST;
 			}
 			break;

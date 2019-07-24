@@ -4,8 +4,9 @@
 #include <avr/io.h>
 
 // Mask for the register that handles the A/B pin input
-#define ROTARY_A_MASK 0x10
-#define ROTARY_B_MASK 0x20
+#define ROTARY_A_CMASK 0x10
+#define ROTARY_B_CMASK 0x20
+#define PCINT1_EN_MASK 0x02
 
 // Contains the previous state of the encoder (bits[7:2]: unused)
 // bit[1]: old state of A
@@ -53,8 +54,8 @@ volatile static int_fast8_t g_delta = 0;
 ISR(PCINT1_vect, ISR_BLOCK) {
 	uint_fast8_t s = state;
 	uint_fast8_t pins = PINC;
-	if (pins & ROTARY_A_MASK) { s |= 0x4; }
-	if (pins & ROTARY_B_MASK) { s |= 0x8; }
+	if (pins & ROTARY_A_CMASK) { s |= 0x4; }
+	if (pins & ROTARY_B_CMASK) { s |= 0x8; }
 	switch (s) {
 		case 0: case 5: case 10: case 15:
 			break;
@@ -76,19 +77,19 @@ ISR(PCINT1_vect, ISR_BLOCK) {
 void encoder_enable(void) {
 	// Setup pin change interrupts (encoder)
 	cli();
-	DDRC &= ~(0x30); // Set pins as input
-	PORTC |= 0x30; // Activate pull-ups
-	PCICR |= 0x02; // Enable pin-change interrupt PCINT1
-	PCMSK1 |= 0x30; // Enable interrupts for pins
+	DDRC &= ~(ROTARY_A_CMASK | ROTARY_B_CMASK); // Set pins as input
+	PORTC |= (ROTARY_A_CMASK | ROTARY_B_CMASK); // Activate pull-ups
+	PCICR |= PCINT1_EN_MASK; // Enable pin-change interrupt PCINT1
+	PCMSK1 |= (ROTARY_A_CMASK | ROTARY_B_CMASK); // Enable interrupts for pins
 	sei();
 }
 
 void encoder_disable(void) {
 	cli();
-	DDRC |= (0x30); // Set pins as output
-	PORTC &= ~(0x30); // Drive pins low 
-	PCICR &= ~(0x02); // Disable pin-change interrupt
-	PCMSK1 &= ~(0x30); // Disable interrupts for the pins
+	DDRC |= (ROTARY_A_CMASK | ROTARY_B_CMASK); // Set pins as output
+	PORTC &= ~(ROTARY_A_CMASK | ROTARY_B_CMASK); // Drive pins low 
+	PCICR &= ~(PCINT1_EN_MASK); // Disable pin-change interrupt
+	PCMSK1 &= ~(ROTARY_A_CMASK | ROTARY_B_CMASK); // Disable interrupts for the pins
 	sei();
 }
 

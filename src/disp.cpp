@@ -1,7 +1,18 @@
+#include "disp.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
-#include "disp.h"
+
+// Pins
+#define CS_ARDUINO_PIN 10
+#define DC_ARDUINO_PIN 9
+#define RST_ARDUINO_PIN 8
+
+#define RST_BMASK 0x01
+#define DC_BMASK 0x02
+#define CS_BMASK 0x04
+#define DIN_BMASK 0x08
+#define CLK_BMASK 0x20
 
 // Screen dimensions
 #define SCREEN_WIDTH  128
@@ -33,7 +44,7 @@ static uint8_t last_mins = 0;
 static uint8_t last_circles = 0;
 static uint8_t last_fade = 0;
 
-Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, 10, 9, 8);
+Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, CS_ARDUINO_PIN, DC_ARDUINO_PIN, RST_ARDUINO_PIN);;
 
 void disp_init(void) {
 	tft.begin();
@@ -52,9 +63,12 @@ void disp_setContrast(uint8_t x) {
 }
 
 void disp_off(void) {
+	disp_clear();
 	tft.sendCommand(SSD1351_CMD_DISPLAYOFF, (const uint8_t *) NULL, 0);
 	uint8_t cmd = 0x0;
 	tft.sendCommand(SSD1351_CMD_FUNCTIONSELECT, &cmd, 1);
+	
+// 	PORTB &= ~(DC_BMASK | CS_BMASK);
 }
 
 void disp_on(void) {
