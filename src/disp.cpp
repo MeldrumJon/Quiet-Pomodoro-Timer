@@ -1,4 +1,5 @@
 #include "disp.h"
+#include <util/delay.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1351.h>
 #include <SPI.h>
@@ -67,8 +68,6 @@ void disp_off(void) {
 	tft.sendCommand(SSD1351_CMD_DISPLAYOFF, (const uint8_t *) NULL, 0);
 	uint8_t cmd = 0x0;
 	tft.sendCommand(SSD1351_CMD_FUNCTIONSELECT, &cmd, 1);
-	
-// 	PORTB &= ~(DC_BMASK | CS_BMASK);
 }
 
 void disp_on(void) {

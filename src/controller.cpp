@@ -1,6 +1,7 @@
 // #define CONTROLLER_DEBUG
 
 #include "controller.h"
+#include <util/delay.h>
 #ifdef CONTROLLER_DEBUG
 #include <stdio.h>
 #endif
@@ -294,8 +295,11 @@ void controller_tick(void) {
 				alert_cnt = 0;
 				disp_alert(alert_state);
 				alert_state = !alert_state;
-				if (alert_state) led_off();
-				else led_on();
+				if (!alert_state) {
+				    led_on();
+                    _delay_ms(8); // LEDs on for 5ms - 10ms are noticeable
+                    led_off();
+                }
 				currentState = ALERT_ST;
 			}
 			break;

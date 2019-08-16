@@ -40,7 +40,7 @@ void loop(void) {
 	if (btn_intrpt_flag) {
 		btn_intrpt_flag = 0;
 		sei();
-		
+
 		controller_wakeup();
 	}
 	sei();
