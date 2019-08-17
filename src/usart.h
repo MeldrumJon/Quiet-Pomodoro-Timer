@@ -1,3 +1,6 @@
+#ifndef USART_H
+#define USART_H
+
 #include <stdio.h>
 
 /**
@@ -8,7 +11,7 @@ extern FILE uart_stream;
 /**
  * Sets the baud rate, enables the transmitter, but does not enable interrupts.
  */
-void usart_init();
+void usart_init(void);
 
 /**
  * Send a character over UART.  This function is more efficient than using printf.
@@ -30,3 +33,5 @@ void usart_sendString(char* str);
  *         stream function pointer
  */
 int usart_put(char data, FILE* stream);
+
+#endif
