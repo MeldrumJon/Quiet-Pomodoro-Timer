@@ -11,9 +11,9 @@ the `variants/[your variant]` directory.
 
 ## Adding third-party libraries.
 
-This project used David Prentice's LCDWIKI forks, 
+~~This project used David Prentice's LCDWIKI forks, 
 [LCDWIKI_gui](https://github.com/prenticedavid/LCDWIKI_gui)
-and [LCDWIKI_SPI](https://github.com/prenticedavid/LCDWIKI_SPI).
+and [LCDWIKI_SPI](https://github.com/prenticedavid/LCDWIKI_SPI).~~
 
 Add the library folders to `lib` and make sure the source files are in the library's 
 top directory.
