@@ -10,12 +10,13 @@ or vibrating.  Time can be set in 1 minute increments between 0 and 60 minutes.
 - [Waveshare 1.5" RGB OLED Module](https://www.waveshare.com/wiki/1.5inch_RGB_OLED_Module)
 - ATMega328p-PU
     - With fuses set to use internal 8MHz clock (use Makefile: `make fuses`)
-- Rotary encoder with push button switch ([like these](https://www.amazon.com/dp/B0197X1UZY/ref=cm_sw_em_r_mt_dp_U_0rAEDbP2TPZJZ))
+- [Rotary encoder with push button switch](https://www.amazon.com/dp/B0197X1UZY/ref=cm_sw_em_r_mt_dp_U_0rAEDbP2TPZJZ)
 - 10uF electrolytic capacitor
 - 2x 0.1uF ceramic capacitors
 - Breakaway headers
-TODO: continue
-- Bright LEDs
+- Bright LEDs (bright at 10mA, can withstand 20mA)
+- 330 ohm resistor
+- Battery holder for 3xAA or 3xAA batteries
 
 ## Tools
 
