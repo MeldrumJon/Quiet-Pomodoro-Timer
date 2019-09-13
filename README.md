@@ -1,4 +1,4 @@
-# Quiet-Pomodoro-Timer
+# Quiet-Timer
 
 A quiet timer: flashes a bright LED when the timer expires instead of ringing 
 or vibrating.  Time can be set in 1 minute increments between 0 and 60 minutes.
