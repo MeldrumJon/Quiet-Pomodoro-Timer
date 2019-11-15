@@ -103,7 +103,7 @@ U 1 1 5D4E171E
 P 7250 4050
 F 0 "J7" H 7419 4111 50  0000 L CNN
 F 1 "OLED_CONN" H 7419 4020 50  0000 L CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical" H 7250 4050 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical" H 7250 4050 50  0001 C CNN
 F 3 "~" H 7250 4050 50  0001 C CNN
 	1    7250 4050
 	1    0    0    -1  
