@@ -5,6 +5,11 @@ or vibrating.  Time can be set in 1 minute increments between 0 and 60 minutes.
 
 ![Setting the time on the Quiet Timer](../assets/Image.jpg?raw=true)
 
+**TODO:**
+- Use a lower power display (reflective character LCD might work).
+- Recommend bright diffused LEDs
+- Design enclosure
+
 ## Parts
 
 - [Waveshare 1.5" RGB OLED Module](https://www.waveshare.com/wiki/1.5inch_RGB_OLED_Module)
