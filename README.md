@@ -1,9 +1,9 @@
-# Quiet-Timer
+# Visual-Timer
 
 A quiet timer: flashes a bright LED when the timer expires instead of ringing 
 or vibrating.  Time can be set in 1 minute increments between 0 and 60 minutes.
 
-![Setting the time on the Quiet Timer](../assets/Image.jpg?raw=true)
+![Setting the time on the Visual Timer](../assets/Image.jpg?raw=true)
 
 **TODO:**
 - Use a lower power display (reflective character LCD might work).
@@ -30,7 +30,7 @@ or vibrating.  Time can be set in 1 minute increments between 0 and 60 minutes.
 
 ## Schematic
 
-![Quiet Timer's schematic](../assets/Schematic.png?raw=true)
+![Visual Timer's schematic](../assets/Schematic.png?raw=true)
 
 ## Setup
 
