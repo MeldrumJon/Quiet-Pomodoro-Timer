@@ -52,7 +52,7 @@ Run `make program` to program the ATMega328p.
 
 ## PCB
 
-KiCAD files are in [the `PCB` Folder](./PCB).  PCB made at [OSH Park](https://oshpark.com/).
+KiCAD files are in [the `hardware` Folder](./hardware).  PCB made at [OSH Park](https://oshpark.com/).
 
 ![Assembled PCB](../assets/PCB.jpg?raw=true)
 
