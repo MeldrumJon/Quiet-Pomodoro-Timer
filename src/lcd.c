@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include "lcd.h"
 
 // Ports and Pins
 #define DATA_PORT PORTB
@@ -49,18 +50,20 @@
 #define WRITE_US (43+10)
 #define READ_US (43+10)
 
-static void lcd_command(uint8_t command) {
-    CTRL_PORT &= ~(CTRL_RS_MASK | CTRL_RW_MASK);
+// RW should always be low
 
+static void lcd_command(uint8_t command) {
+    // Assuming RS is already low (should be)
     DATA_PORT = command;
 
     CTRL_PORT |= CTRL_E_MASK;
     asm volatile("nop"); // hold for at least 195ns
     CTRL_PORT &= ~(CTRL_E_MASK);
+
+    DATA_PORT = 0x00; // This will save a few uA of power
 }
 
 static void lcd_data(uint8_t data) {
-    CTRL_PORT &= ~(CTRL_RW_MASK); // TODO: Do we need this? It's always zero
     CTRL_PORT |= CTRL_RS_MASK;
 
     DATA_PORT = data;
@@ -68,16 +71,20 @@ static void lcd_data(uint8_t data) {
     CTRL_PORT |= CTRL_E_MASK;
     asm volatile("nop"); // hold for at least 195ns
     CTRL_PORT &= ~(CTRL_E_MASK);
+
+    // Keep these low--save a few uA of power
+    DATA_PORT = 0x00;
+    CTRL_PORT &= ~(CTRL_RS_MASK);
 }
 
-void lcd_init(void) {
+void lcd_on(void) {
     CTRL_PORT = CTRL_POWER_MASK; // Power LCD
     _delay_ms(POWERON_MS); // Delay more than 30ms after power up
 
     lcd_command(CMD_FUNCTIONSET | FUNCTIONSET_DL | FUNCTIONSET_N);
     _delay_us(CMD_FUNCTIONSET_US);
 
-    lcd_command(CMD_DISPLAYCONTROL | DISPLAYCONTROL_D | DISPLAYCONTROL_C | DISPLAYCONTROL_B);
+    lcd_command(CMD_DISPLAYCONTROL | DISPLAYCONTROL_D);
     _delay_us(CMD_DISPLAYCONTROL_US);
 
     lcd_command(CMD_CLEARDISPLAY);
@@ -90,6 +97,11 @@ void lcd_init(void) {
 void lcd_off(void) {
     DATA_PORT = 0x00;
     CTRL_PORT = 0x00;
+}
+
+void lcd_clear(void) {
+    lcd_command(CMD_CLEARDISPLAY);
+    _delay_us(CMD_CLEARDISPLAY_US);
 }
 
 void lcd_set_cursor(uint8_t linemask, uint8_t idx) {
@@ -130,4 +142,72 @@ void lcd_put_cgram_same(uint8_t chaddr, uint8_t data) {
         lcd_data(data);
         _delay_us(WRITE_US);
     }
+}
+
+void lcd_set_cgram_progress(void) {
+    lcd_put_cgram_same(0, 0x10);
+    lcd_put_cgram_same(1, 0x18);
+    lcd_put_cgram_same(2, 0x1C);
+    lcd_put_cgram_same(3, 0x1E);
+}
+
+void lcd_write_progressbar(uint8_t count) {
+    uint8_t full = count / 5;
+    uint8_t partial = count % 5;
+    lcd_set_cursor(LCD_LINE1, 0);
+    for (uint8_t i = 0; i < 24; ++i) {
+        if (i == 16) {
+            lcd_set_cursor(LCD_LINE2, 0);
+        }
+        uint8_t ch;
+        if (i < full) {
+            ch = 0xFF;
+        }
+        else if (i == full) {
+            ch = (partial==0) ? 0x20 : partial-1;
+        }
+        else {
+            ch = 0x20;
+        }
+        lcd_write_ch(ch);
+    }
+}
+
+uint8_t SET_CH[8] = {
+    0b10000,
+    0b11111,
+    0b10000,
+    0b10101,
+    0b11111,
+    0b10000,
+    0b11111,
+    0b00001
+};
+
+uint8_t CD_CH[8] = {
+    0b01110,
+    0b10001,
+    0b10001,
+    0b11111,
+    0b00000,
+    0b10001,
+    0b10001,
+    0b01110
+};
+
+uint8_t ALT_CH[8] = {
+    0b00000,
+    0b00001,
+    0b00001,
+    0b11111,
+    0b00000,
+    0b01111,
+    0b10100,
+    0b01111
+};
+
+void lcd_set_cgram_modes(void) {
+    lcd_put_cgram(4, SET_CH);
+    lcd_put_cgram(5, CD_CH);
+    lcd_put_cgram(6, ALT_CH);
 }
