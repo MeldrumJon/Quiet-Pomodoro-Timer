@@ -12,43 +12,43 @@
 #define CTRL_RS_MASK 0x8
 
 // Wait for more than 30ms after VDD rises to 4.5V
-#define POWERON_MS (30+100)
+#define POWERON_MS (30+200)
 
 // Commands
 #define CMD_CLEARDISPLAY    0x01
-#define CMD_CLEARDISPLAY_US (1530+100)
+#define CMD_CLEARDISPLAY_US (1530+200)
 
 #define CMD_RETURNHOME    0x02
-#define CMD_RETURNHOME_US (1530+100)
+#define CMD_RETURNHOME_US (1530+200)
 
 #define CMD_ENTRYMODESET    0x04
-#define CMD_ENTRYMODESET_US (39+10)
+#define CMD_ENTRYMODESET_US (39+20)
 #define ENTRYMODESET_ID 0x2
 #define ENTRYMODESET_SH 0x1
 
 #define CMD_DISPLAYCONTROL    0x08
-#define CMD_DISPLAYCONTROL_US (39+10)
+#define CMD_DISPLAYCONTROL_US (39+20)
 #define DISPLAYCONTROL_D      0x4
 #define DISPLAYCONTROL_C      0x2
 #define DISPLAYCONTROL_B      0x1
 
 #define CMD_CURSORSHIFT    0x10
-#define CMD_CURSORSHIFT_US (39+10)
+#define CMD_CURSORSHIFT_US (39+20)
 
 #define CMD_FUNCTIONSET    0x20
-#define CMD_FUNCTIONSET_US (39+10)
+#define CMD_FUNCTIONSET_US (39+20)
 #define FUNCTIONSET_DL     0x10
 #define FUNCTIONSET_N      0x08
 #define FUNCTIONSET_F      0x04
 
 #define CMD_SETCGRAMADDR    0x40
-#define CMD_SETCGRAMADDR_US (39+10)
+#define CMD_SETCGRAMADDR_US (39+20)
 
 #define CMD_SETDDRAMADDR    0x80
-#define CMD_SETDDRAMADDR_US (39+10)
+#define CMD_SETDDRAMADDR_US (39+20)
 
-#define WRITE_US (43+10)
-#define READ_US (43+10)
+#define WRITE_US (43+20)
+#define READ_US (43+20)
 
 // RW should always be low
 
@@ -159,12 +159,17 @@ void lcd_write_progressbar(uint8_t count) {
         if (i == 16) {
             lcd_set_cursor(LCD_LINE2, 0);
         }
-        uint8_t ch;
+        uint8_t ch = 0x20;
         if (i < full) {
             ch = 0xFF;
         }
         else if (i == full) {
-            ch = (partial==0) ? 0x20 : partial-1;
+            if (partial == 0) {
+                ch = 0x20;
+            }
+            else {
+                ch = partial - 1;
+            }
         }
         else {
             ch = 0x20;
