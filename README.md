@@ -4,6 +4,9 @@ Shows timer progress on screen.  Flashes a bright LED when the timer expires
 instead of ringing or vibrating.  Useful for time management in quiet offices 
 or libraries.
 
+![Visual Timer](../assets/Image.jpg)
+![Time's Up](../assets/Flash.png)
+
 ## Parts
 
 - [16x2 Reflective LCD Character Display](https://www.mouser.com/ProductDetail/668-S16204XRGHS10B)
@@ -48,4 +51,5 @@ Run `make program` to program the ATMega328p.
 ## PCB
 
 KiCAD files are in [the `hardware` Folder](./hardware).
+
 
