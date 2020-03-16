@@ -4,7 +4,7 @@
 #include <avr/io.h>
 #include "timer.h"
 
-#define DEBOUNCE_TICKS TIMER_TICKS(0.050)
+#define DEBOUNCE_TICKS TIMER_TICKS(0.020)
 #define LONGPRESS_TICKS TIMER_TICKS(2)
 
 static enum btn_st_t {

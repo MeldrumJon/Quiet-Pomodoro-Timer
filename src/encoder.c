@@ -4,8 +4,8 @@
 #include <avr/io.h>
 
 // Mask for the register that handles the A/B pin input
-#define ROTARY_A_DMASK 0x08
-#define ROTARY_B_DMASK 0x10
+#define ROTARY_A_DMASK 0x10
+#define ROTARY_B_DMASK 0x08
 #define PCINT2_EN_MASK 0x04
 
 // Contains the previous state of the encoder (bits[7:2]: unused)
@@ -51,22 +51,30 @@ volatile static int8_t g_delta = 0;
  *  15   1	 1	 1	 1	 no movement
  * </code>
  */
+int8_t delta_lut[16] = {
+    0,
+    +1,
+    -1,
+    +2,
+    -1,
+    0,
+    -2,
+    +1,
+    +1,
+    -2,
+    0,
+    -1,
+    +2,
+    -1,
+    +1,
+    0
+};
+
 ISR(PCINT2_vect, ISR_BLOCK) {
 	uint8_t s = state;
-	if (PIND & ROTARY_A_DMASK) { s |= 0x8; }
-	if (PIND & ROTARY_B_DMASK) { s |= 0x4; }
-	switch (s) {
-		case 0: case 5: case 10: case 15:
-			break;
-		case 1: case 7: case 8: case 14:
-			g_delta++; break;
-		case 2: case 4: case 11: case 13:
-			g_delta--; break;
-		case 3: case 12:
-			g_delta += 2; break;
-		default:
-			g_delta -= 2; break;
-	}
+	if (PIND & ROTARY_A_DMASK) { s |= 0x4; }
+	if (PIND & ROTARY_B_DMASK) { s |= 0x8; }
+	g_delta += delta_lut[s];
 	state = (s >> 2);
 }
 

@@ -1,9 +1,8 @@
 BUILD_DIR := build
 
 FLAGS = -mmcu=atmega328p 
-FLAGS += -DF_CPU=8000000UL -DARDUINO=10809
-FLAGS += -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR
-FLAGS += -Os -Wl,--gc-sections -ffunction-sections -fdata-sections
+FLAGS += -DF_CPU=8000000UL
+FLAGS += -O2 -Wall -Wl,--gc-sections -ffunction-sections -fdata-sections
 FLAGS += -fno-exceptions -Wno-error=narrowing
 FLAGS += -fno-fat-lto-objects -flto -fuse-linker-plugin
 
